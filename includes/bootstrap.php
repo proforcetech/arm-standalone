@@ -37,3 +37,9 @@ $baseUrl = rtrim($baseUrl, '/');
 if (!defined('ARM_RE_URL')) {
     define('ARM_RE_URL', $baseUrl !== '' ? $baseUrl . '/' : '/');
 }
+
+// Load authentication helpers (sessions, CSRF, capability shims)
+$authHelpers = __DIR__ . '/auth-helpers.php';
+if (file_exists($authHelpers)) {
+    require_once $authHelpers;
+}
