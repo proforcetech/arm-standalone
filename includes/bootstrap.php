@@ -38,8 +38,29 @@ if (!defined('ARM_RE_URL')) {
     define('ARM_RE_URL', $baseUrl !== '' ? $baseUrl . '/' : '/');
 }
 
+// Load WordPress compatibility layers (must be loaded before anything else)
+require_once __DIR__ . '/compat/hooks.php';
+require_once __DIR__ . '/compat/wpdb.php';
+require_once __DIR__ . '/compat/sanitization-functions.php';
+require_once __DIR__ . '/compat/i18n-functions.php';
+require_once __DIR__ . '/compat/options-api.php';
+require_once __DIR__ . '/compat/ajax-functions.php';
+require_once __DIR__ . '/compat/admin-functions.php';
+require_once __DIR__ . '/compat/wpdb-init.php';
+
+// Start session if not already started (for authentication)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // Load authentication helpers (sessions, CSRF, capability shims)
 $authHelpers = __DIR__ . '/auth-helpers.php';
 if (file_exists($authHelpers)) {
     require_once $authHelpers;
+}
+
+// Load compatibility shims for legacy class names
+$compatShim = __DIR__ . '/compat-shim.php';
+if (file_exists($compatShim)) {
+    require_once $compatShim;
 }

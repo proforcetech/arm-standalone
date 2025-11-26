@@ -37,12 +37,4 @@ if (!function_exists('wp_die')) {
     }
 }
 
-if (!function_exists('wp_send_json_error')) {
-    function wp_send_json_error(array $data = [], int $status = 400): void
-    {
-        http_response_code($status);
-        header('Content-Type: application/json');
-        echo json_encode(array_merge(['success' => false], $data));
-        exit;
-    }
-}
+// wp_send_json_error is now defined in ajax-functions.php
