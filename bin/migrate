@@ -1,0 +1,57 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use ARM\Database\Config;
+use ARM\Database\ConnectionFactory;
+use ARM\Migrations\MigrationRunner;
+use ARM\Migrations\SeederRunner;
+use Dotenv\Dotenv;
+
+$root = dirname(__DIR__);
+
+require $root . '/vendor/autoload.php';
+
+if (file_exists($root . '/.env')) {
+    Dotenv::createImmutable($root)->safeLoad();
+}
+
+define('ARM_RE_PATH', rtrim($root, '/\\') . '/');
+
+$envConfig = [
+    'DB_HOST'     => $_ENV['DB_HOST'] ?? getenv('DB_HOST') ?: null,
+    'DB_PORT'     => $_ENV['DB_PORT'] ?? getenv('DB_PORT') ?: null,
+    'DB_NAME'     => $_ENV['DB_NAME'] ?? getenv('DB_NAME') ?: null,
+    'DB_USER'     => $_ENV['DB_USER'] ?? getenv('DB_USER') ?: null,
+    'DB_PASSWORD' => $_ENV['DB_PASSWORD'] ?? getenv('DB_PASSWORD') ?: null,
+    'DB_PREFIX'   => $_ENV['DB_PREFIX'] ?? getenv('DB_PREFIX') ?: null,
+    'DB_CHARSET'  => $_ENV['DB_CHARSET'] ?? getenv('DB_CHARSET') ?: null,
+    'DB_COLLATE'  => $_ENV['DB_COLLATE'] ?? getenv('DB_COLLATE') ?: null,
+];
+
+$config = Config::fromEnv(array_filter($envConfig, static fn ($value) => $value !== null));
+$pdo = ConnectionFactory::make($config);
+
+$command = $argv[1] ?? 'up';
+
+$migrationRunner = new MigrationRunner($pdo, $config->getPrefix(), $config->charsetCollate());
+$seederRunner    = new SeederRunner($pdo, $config->getPrefix(), $config->charsetCollate());
+
+switch ($command) {
+    case 'up':
+        $appliedMigrations = $migrationRunner->runPending($root . '/database/migrations');
+        $appliedSeeders    = $seederRunner->runPending($root . '/database/seeders');
+
+        echo "Migrations applied: " . (count($appliedMigrations) ? implode(', ', $appliedMigrations) : 'none') . PHP_EOL;
+        echo "Seeders applied: " . (count($appliedSeeders) ? implode(', ', $appliedSeeders) : 'none') . PHP_EOL;
+        break;
+    case 'status':
+        echo "Pending migrations: " . (implode(', ', $migrationRunner->pending($root . '/database/migrations')) ?: 'none') . PHP_EOL;
+        echo "Pending seeders: " . (implode(', ', $seederRunner->pending($root . '/database/seeders')) ?: 'none') . PHP_EOL;
+        break;
+    default:
+        fwrite(STDERR, "Unknown command: {$command}" . PHP_EOL);
+        fwrite(STDERR, "Usage: php bin/migrate [up|status]" . PHP_EOL);
+        exit(1);
+}
