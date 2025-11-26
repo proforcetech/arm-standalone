@@ -28,8 +28,8 @@ if (!function_exists('verify_nonce')) {
     }
 }
 
-if (!function_exists('die')) {
-    function die(string $message = 'Forbidden', int $status = 403): void
+if (!function_exists('wp_die')) {
+    function wp_die(string $message = 'Forbidden', int $status = 403): void
     {
         http_response_code($status);
         echo $message;
