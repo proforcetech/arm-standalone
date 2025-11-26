@@ -2,7 +2,7 @@ Standalone script created from existing plugin.
 
 ## Front controller
 
-Requests are routed through `public/index.php`, which loads the Composer autoloader, reads environment variables from `.env`, defines project path constants, and boots every ARM module in the same order as the WordPress plugin.
+Requests are routed through `public/index.php`, which loads the Composer autoloader, reads environment variables from `.env` via [vlucas/phpdotenv](https://github.com/vlucas/phpdotenv), defines project path constants, and boots every ARM module in the same order as the WordPress plugin.
 
 ## Routing
 
@@ -20,10 +20,17 @@ location / {
 
 ### LiteSpeed/Apache
 
-The repository ships with `public/.htaccess` that routes unknown paths to the front controller:
+The repository ships with `public/.htaccess` that routes unknown paths to the front controller. LiteSpeed users can keep static assets out of PHP by short-circuiting `/assets/` before falling through to the front controller:
 
 ```
 RewriteEngine On
+
+# Serve assets directly so LiteSpeed can leverage static caching.
+RewriteCond %{REQUEST_URI} ^/assets/
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Everything else is handled by the front controller.
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]
