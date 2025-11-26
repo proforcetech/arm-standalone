@@ -1,7 +1,7 @@
 <?php
 namespace ARM\TimeLogs;
 
-use WP_User;
+use User;
 
 if (!defined('ABSPATH')) exit;
 
@@ -20,8 +20,8 @@ final class Technician_Page
             return;
         }
 
-        $user = wp_get_current_user();
-        if (!$user instanceof WP_User) {
+        $user = get_current_user();
+        if (!$user instanceof User) {
             return;
         }
 
@@ -43,18 +43,18 @@ final class Technician_Page
     public static function render(): void
     {
         if (!is_user_logged_in()) {
-            wp_die(__('You must be logged in to access this page.', 'arm-repair-estimates'));
+            die(__('You must be logged in to access this page.', 'arm-repair-estimates'));
         }
 
-        $user = wp_get_current_user();
-        if (!$user instanceof WP_User || !self::is_visible_to($user)) {
-            wp_die(__('You do not have permission to view this page.', 'arm-repair-estimates'));
+        $user = get_current_user();
+        if (!$user instanceof User || !self::is_visible_to($user)) {
+            die(__('You do not have permission to view this page.', 'arm-repair-estimates'));
         }
 
         echo self::render_portal($user, true);
     }
 
-    public static function render_portal(WP_User $user, bool $is_admin = true): string
+    public static function render_portal(User $user, bool $is_admin = true): string
     {
         $context = self::build_context($user);
         self::enqueue_assets($context);
@@ -62,7 +62,7 @@ final class Technician_Page
         return self::render_view($context, $is_admin);
     }
 
-    private static function build_context(WP_User $user): array
+    private static function build_context(User $user): array
     {
         $jobs           = Controller::get_jobs_for_technician((int) $user->ID);
         $assigned_rows  = [];
@@ -103,13 +103,13 @@ final class Technician_Page
         $summary      = $context['summary'] ?? [];
         $active_job_id = isset($context['active_job_id']) ? (int) $context['active_job_id'] : 0;
 
-        $nonce = wp_create_nonce('wp_rest');
+        $nonce = create_nonce('rest');
         $rest  = [
             'start' => rest_url('arm/v1/time-entries/start'),
             'stop'  => rest_url('arm/v1/time-entries/stop'),
         ];
 
-        wp_localize_script('arm-tech-time', 'ARM_RE_TIME', [
+        localize_script('arm-tech-time', 'ARM_RE_TIME', [
             'rest'        => $rest,
             'nonce'       => $nonce,
             'activeJobId' => $active_job_id,
@@ -126,8 +126,8 @@ final class Technician_Page
             ],
         ]);
 
-        wp_enqueue_style('arm-re-admin');
-        wp_enqueue_script('arm-tech-time');
+        enqueue_style('arm-re-admin');
+        enqueue_script('arm-tech-time');
     }
 
     private static function render_view(array $context, bool $is_admin): string
@@ -305,7 +305,7 @@ final class Technician_Page
         return in_array($normalized, $completed, true);
     }
 
-    public static function is_visible_to(WP_User $user): bool
+    public static function is_visible_to(User $user): bool
     {
         if (user_can($user, 'manage_options')) {
             return true;

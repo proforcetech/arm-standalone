@@ -52,7 +52,7 @@ class Controller {
 
         if (is_array($users)) {
             foreach ($users as $user) {
-                if ($user instanceof \WP_User) {
+                if ($user instanceof \User) {
                     $directory[(int) $user->ID] = [
                         'id'    => (int) $user->ID,
                         'name'  => $user->display_name ?: $user->user_login,
@@ -132,21 +132,21 @@ class Controller {
         add_action('admin_post_arm_re_send_estimate',   [__CLASS__, 'handle_send_estimate']);
         add_action('admin_post_arm_re_mark_status',     [__CLASS__, 'handle_mark_status']);
 
-        add_action('wp_ajax_arm_re_search_customers',   [__CLASS__, 'ajax_search_customers']);
-        add_action('wp_ajax_arm_re_customer_vehicles',  [__CLASS__, 'ajax_customer_vehicles']);
+        add_action('ajax_arm_re_search_customers',   [__CLASS__, 'ajax_search_customers']);
+        add_action('ajax_arm_re_customer_vehicles',  [__CLASS__, 'ajax_customer_vehicles']);
     }
 
     /** ----------------------------------------------------------------
      * DB install/upgrade for estimates, items, jobs, customers, signatures
      * -----------------------------------------------------------------*/
     public static function install_tables() {
-        global $wpdb; require_once ABSPATH.'wp-admin/includes/upgrade.php';
-        $charset  = $wpdb->get_charset_collate();
-        $customers= $wpdb->prefix.'arm_customers';
-        $estimates= $wpdb->prefix.'arm_estimates';
-        $items    = $wpdb->prefix.'arm_estimate_items';
-        $jobs     = $wpdb->prefix.'arm_estimate_jobs';
-        $sigs     = $wpdb->prefix.'arm_signatures';
+        global $db; require_once ABSPATH.'wp-admin/includes/upgrade.php';
+        $charset  = $db->get_charset_collate();
+        $customers= $db->prefix.'arm_customers';
+        $estimates= $db->prefix.'arm_estimates';
+        $items    = $db->prefix.'arm_estimate_items';
+        $jobs     = $db->prefix.'arm_estimate_jobs';
+        $sigs     = $db->prefix.'arm_signatures';
 
         dbDelta("CREATE TABLE $customers (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -253,14 +253,14 @@ class Controller {
 
     /** List screen */
     private static function render_list() {
-        global $wpdb;
-        $tblE = $wpdb->prefix.'arm_estimates';
-        $tblC = $wpdb->prefix.'arm_customers';
+        global $db;
+        $tblE = $db->prefix.'arm_estimates';
+        $tblC = $db->prefix.'arm_customers';
 
         $page = max(1, intval($_GET['paged'] ?? 1));
         $per  = 20; $off = ($page-1)*$per;
 
-        $rows = $wpdb->get_results($wpdb->prepare("
+        $rows = $db->get_results($db->prepare("
             SELECT e.*, CONCAT(c.first_name,' ',c.last_name) AS customer_name, c.email
             FROM $tblE e
             JOIN $tblC c ON c.id=e.customer_id
@@ -268,7 +268,7 @@ class Controller {
             LIMIT %d OFFSET %d
         ", $per, $off));
 
-        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM $tblE");
+        $total = (int) $db->get_var("SELECT COUNT(*) FROM $tblE");
         $pages = max(1, ceil($total/$per));
 
         $new_url = admin_url('admin.php?page=arm-repair-estimates-builder&action=new');
@@ -286,11 +286,11 @@ class Controller {
             <tbody>
             <?php if ($rows): foreach ($rows as $r):
                 $edit    = admin_url('admin.php?page=arm-repair-estimates-builder&action=edit&id='.(int)$r->id);
-                $send    = wp_nonce_url(admin_url('admin-post.php?action=arm_re_send_estimate&id='.(int)$r->id), 'arm_re_send_estimate');
+                $send    = nonce_url(admin_url('admin-post.php?action=arm_re_send_estimate&id='.(int)$r->id), 'arm_re_send_estimate');
                 $view    = add_query_arg(['arm_estimate'=>$r->token], home_url('/'));
 				$short_url = \ARM\Links\Shortlinks::get_or_create_for_estimate((int)$r->id, (string)$r->token);
-                $approve = wp_nonce_url(admin_url('admin-post.php?action=arm_re_mark_status&id='.(int)$r->id.'&status=APPROVED'), 'arm_re_mark_status');
-                $decline = wp_nonce_url(admin_url('admin-post.php?action=arm_re_mark_status&id='.(int)$r->id.'&status=DECLINED'), 'arm_re_mark_status');
+                $approve = nonce_url(admin_url('admin-post.php?action=arm_re_mark_status&id='.(int)$r->id.'&status=APPROVED'), 'arm_re_mark_status');
+                $decline = nonce_url(admin_url('admin-post.php?action=arm_re_mark_status&id='.(int)$r->id.'&status=DECLINED'), 'arm_re_mark_status');
             ?>
               <tr>
                 <td><?php echo esc_html($r->estimate_no); ?></td>
@@ -330,13 +330,13 @@ class Controller {
     private static function render_form($id = 0) {
         if (!current_user_can('manage_options')) return;
 
-        global $wpdb;
-        $tblE = $wpdb->prefix.'arm_estimates';
-        $tblC = $wpdb->prefix.'arm_customers';
-        $tblI = $wpdb->prefix.'arm_estimate_items';
-        $tblJ = $wpdb->prefix.'arm_estimate_jobs';
-        $tblR = $wpdb->prefix.'arm_estimate_requests';
-        $tblV = $wpdb->prefix.'arm_vehicles';
+        global $db;
+        $tblE = $db->prefix.'arm_estimates';
+        $tblC = $db->prefix.'arm_customers';
+        $tblI = $db->prefix.'arm_estimate_items';
+        $tblJ = $db->prefix.'arm_estimate_jobs';
+        $tblR = $db->prefix.'arm_estimate_requests';
+        $tblV = $db->prefix.'arm_vehicles';
         $req  = null;
 
         $defaults = [
@@ -376,10 +376,10 @@ class Controller {
         $technicians = self::get_technician_directory();
 
         if ($id) {
-            $estimate = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblE WHERE id=%d", $id));
+            $estimate = $db->get_row($db->prepare("SELECT * FROM $tblE WHERE id=%d", $id));
             if (!$estimate) { echo '<div class="notice notice-error"><p>Estimate not found.</p></div>'; return; }
-            $jobs = $wpdb->get_results($wpdb->prepare("SELECT * FROM $tblJ WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $id));
-            $items= $wpdb->get_results($wpdb->prepare("SELECT * FROM $tblI WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $id));
+            $jobs = $db->get_results($db->prepare("SELECT * FROM $tblJ WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $id));
+            $items= $db->get_results($db->prepare("SELECT * FROM $tblI WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $id));
             $selected_vehicle_id = isset($estimate->vehicle_id) ? (int) $estimate->vehicle_id : 0;
             $prefill_vehicle['year'] = isset($estimate->vehicle_year) ? (string) $estimate->vehicle_year : '';
             $prefill_vehicle['make'] = isset($estimate->vehicle_make) ? (string) $estimate->vehicle_make : '';
@@ -389,7 +389,7 @@ class Controller {
             $prefill_vehicle['drive'] = isset($estimate->vehicle_drive) ? (string) $estimate->vehicle_drive : '';
             $prefill_vehicle['trim'] = isset($estimate->vehicle_trim) ? (string) $estimate->vehicle_trim : '';
         } elseif (!empty($_GET['from_request'])) {
-            $req = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblR WHERE id=%d", intval($_GET['from_request'])));
+            $req = $db->get_row($db->prepare("SELECT * FROM $tblR WHERE id=%d", intval($_GET['from_request'])));
             if ($req) {
 
                 $prefill_customer = [
@@ -415,7 +415,7 @@ class Controller {
         }
 
         if ($selected_vehicle_id) {
-            $selected_vehicle_row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblV WHERE id=%d", $selected_vehicle_id));
+            $selected_vehicle_row = $db->get_row($db->prepare("SELECT * FROM $tblV WHERE id=%d", $selected_vehicle_id));
             if (!$selected_vehicle_row) {
                 $selected_vehicle_id = 0;
                 if (isset($estimate->vehicle_id)) {
@@ -452,7 +452,7 @@ class Controller {
         $customer = null;
         $customer_id_for_vehicles = 0;
         if ($estimate->customer_id) {
-            $customer = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblC WHERE id=%d", $estimate->customer_id));
+            $customer = $db->get_row($db->prepare("SELECT * FROM $tblC WHERE id=%d", $estimate->customer_id));
             $customer_id_for_vehicles = (int) $estimate->customer_id;
         } elseif (!empty($_GET['customer_id'])) {
             $customer_id_for_vehicles = (int) $_GET['customer_id'];
@@ -469,12 +469,12 @@ class Controller {
                 $order_by = 'updated_at DESC, id DESC';
             }
             $sql = "SELECT * FROM $tblV WHERE $conditions ORDER BY $order_by";
-            $customer_vehicle_rows = $wpdb->get_results($wpdb->prepare($sql, $customer_id_for_vehicles));
+            $customer_vehicle_rows = $db->get_results($db->prepare($sql, $customer_id_for_vehicles));
         }
 
         $action_url = admin_url('admin-post.php');
-        $save_nonce = wp_create_nonce('arm_re_save_estimate');
-        $send_url   = $id ? wp_nonce_url(admin_url('admin-post.php?action=arm_re_send_estimate&id='.(int)$id), 'arm_re_send_estimate') : '';
+        $save_nonce = create_nonce('arm_re_save_estimate');
+        $send_url   = $id ? nonce_url(admin_url('admin-post.php?action=arm_re_send_estimate&id='.(int)$id), 'arm_re_send_estimate') : '';
 
         $vehicle_selector_mode = $selected_vehicle_id > 0 ? 'existing' : 'add_new';
         $vehicle_selector_value = $selected_vehicle_id > 0 ? (string) $selected_vehicle_id : self::VEHICLE_SELECTOR_NEW_VALUE;
@@ -706,16 +706,16 @@ class Controller {
           if (typeof window !== 'undefined') {
             window.ARM_RE_EST = window.ARM_RE_EST || {};
             window.ARM_RE_EST.vehicle = window.ARM_RE_EST.vehicle || {};
-            window.ARM_RE_EST.vehicle.selectedVehicleId = <?php echo wp_json_encode($selected_vehicle_id); ?>;
-            window.ARM_RE_EST.vehicle.selectorNewValue = <?php echo wp_json_encode(self::vehicle_selector_new_value()); ?>;
-            window.ARM_RE_EST.vehicle.initialOptionsHtml = <?php echo wp_json_encode($vehicle_selector_options); ?>;
-            window.ARM_RE_EST.vehicle.initialMode = <?php echo wp_json_encode($vehicle_selector_mode); ?>;
+            window.ARM_RE_EST.vehicle.selectedVehicleId = <?php echo json_encode($selected_vehicle_id); ?>;
+            window.ARM_RE_EST.vehicle.selectorNewValue = <?php echo json_encode(self::vehicle_selector_new_value()); ?>;
+            window.ARM_RE_EST.vehicle.initialOptionsHtml = <?php echo json_encode($vehicle_selector_options); ?>;
+            window.ARM_RE_EST.vehicle.initialMode = <?php echo json_encode($vehicle_selector_mode); ?>;
           }
 
-          var jobTemplate = <?php echo wp_json_encode(self::job_block_template()); ?>;
-          var technicianOptions = <?php echo wp_json_encode(self::render_technician_options($technicians)); ?>;
-          var rowTemplate = <?php echo wp_json_encode(self::item_row_template()); ?>;
-          var customerNonce = '<?php echo wp_create_nonce('arm_re_est_admin'); ?>';
+          var jobTemplate = <?php echo json_encode(self::job_block_template()); ?>;
+          var technicianOptions = <?php echo json_encode(self::render_technician_options($technicians)); ?>;
+          var rowTemplate = <?php echo json_encode(self::item_row_template()); ?>;
+          var customerNonce = '<?php echo create_nonce('arm_re_est_admin'); ?>';
           var taxApply = '<?php echo esc_js(get_option('arm_re_tax_apply','parts_labor')); ?>';
 
           function parseNum(value) {
@@ -1032,14 +1032,14 @@ public static function item_row_template() {
 
     /** Save estimate (create/update), handle customer create/update, items & jobs, totals */
     public static function handle_save_estimate() {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('manage_options')) die('Nope');
         check_admin_referer('arm_re_save_estimate');
 
-        global $wpdb;
-        $tblE = $wpdb->prefix.'arm_estimates';
-        $tblC = $wpdb->prefix.'arm_customers';
-        $tblI = $wpdb->prefix.'arm_estimate_items';
-        $tblJ = $wpdb->prefix.'arm_estimate_jobs';
+        global $db;
+        $tblE = $db->prefix.'arm_estimates';
+        $tblC = $db->prefix.'arm_customers';
+        $tblI = $db->prefix.'arm_estimate_items';
+        $tblJ = $db->prefix.'arm_estimate_jobs';
 
         $id = intval($_POST['id'] ?? 0);
         $estimate_no = sanitize_text_field($_POST['estimate_no']);
@@ -1052,7 +1052,7 @@ public static function item_row_template() {
         }
 
         if ($status === 'APPROVED' && $technician_id <= 0) {
-            wp_die(__('A technician must be assigned before approving an estimate.', 'arm-repair-estimates'));
+            die(__('A technician must be assigned before approving an estimate.', 'arm-repair-estimates'));
         }
 
         
@@ -1070,14 +1070,14 @@ public static function item_row_template() {
 
             if (!empty($cdata['first_name']) || !empty($cdata['last_name']) || !empty($cdata['email'])) {
                 $cdata['created_at'] = current_time('mysql');
-                $wpdb->insert($tblC, $cdata);
-                $customer_id = (int) $wpdb->insert_id;
+                $db->insert($tblC, $cdata);
+                $customer_id = (int) $db->insert_id;
             } else {
-                wp_die('Select or create a customer.');
+                die('Select or create a customer.');
             }
         } else {
 
-            $wpdb->update($tblC, $cdata, ['id'=>$customer_id]);
+            $db->update($tblC, $cdata, ['id'=>$customer_id]);
         }
 
 
@@ -1171,31 +1171,31 @@ public static function item_row_template() {
             'mileage_miles'=>round($mileage_miles,2),
             'mileage_rate'=>round($mileage_rate,2),
             'mileage_total'=>round($totals['mileage_total'],2),
-            'notes'=>wp_kses_post($_POST['notes'] ?? ''),'expires_at'=>($_POST['expires_at'] ?? null) ?: null,
+            'notes'=>kses_post($_POST['notes'] ?? ''),'expires_at'=>($_POST['expires_at'] ?? null) ?: null,
             'updated_at'=>current_time('mysql')
         ];
 
         if ($id) {
             
-            $prev = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblE WHERE id=%d", $id));
-            $wpdb->update($tblE, $data, ['id'=>$id]);
+            $prev = $db->get_row($db->prepare("SELECT * FROM $tblE WHERE id=%d", $id));
+            $db->update($tblE, $data, ['id'=>$id]);
         } else {
             $data['created_at'] = current_time('mysql');
             $data['token'] = self::generate_token();
             $data['request_id'] = isset($_GET['from_request']) ? intval($_GET['from_request']) : null;
             if (empty($data['estimate_no'])) $data['estimate_no'] = self::generate_estimate_no();
-            $wpdb->insert($tblE, $data);
-            $id = (int)$wpdb->insert_id;
+            $db->insert($tblE, $data);
+            $id = (int)$db->insert_id;
         }
 
         
-        $wpdb->query($wpdb->prepare("DELETE FROM $tblI WHERE estimate_id=%d", $id));
-        $wpdb->query($wpdb->prepare("DELETE FROM $tblJ WHERE estimate_id=%d", $id));
+        $db->query($db->prepare("DELETE FROM $tblI WHERE estimate_id=%d", $id));
+        $db->query($db->prepare("DELETE FROM $tblJ WHERE estimate_id=%d", $id));
 
         
         $job_db_ids = [];
         foreach ($jobs_to_insert as $j) {
-            $wpdb->insert($tblJ, [
+            $db->insert($tblJ, [
                 'estimate_id'=>$id,
                 'title'=>$j['title'],
                 'is_optional'=>$j['is_optional'],
@@ -1203,13 +1203,13 @@ public static function item_row_template() {
                 'sort_order'=>$j['sort'],
                 'technician_id'=>!empty($j['technician_id']) ? (int)$j['technician_id'] : null,
             ]);
-            $job_db_ids[] = (int)$wpdb->insert_id;
+            $job_db_ids[] = (int)$db->insert_id;
         }
 
         
         foreach ($prepared_items as $pi) {
             $mapped_job_id = $job_db_ids[ $pi['job_local_index'] ] ?? null;
-            $wpdb->insert($tblI, [
+            $db->insert($tblI, [
                 'estimate_id'=>$id,
                 'job_id'=>$mapped_job_id,
                 'item_type'=>$pi['type'],
@@ -1228,7 +1228,7 @@ public static function item_row_template() {
                        (abs($prev->tax_amount - $tax_amount) > 0.009) ||
                        (abs($prev->total - $total) > 0.009);
             if ($changed) {
-                $wpdb->update($tblE, [
+                $db->update($tblE, [
                     'status'=>'NEEDS_REAPPROVAL',
                     'version'=>(int)$prev->version + 1,
                     'approved_at'=>null,
@@ -1239,14 +1239,14 @@ public static function item_row_template() {
             }
         }
 
-        wp_redirect(admin_url('admin.php?page=arm-repair-estimates-builder&action=edit&id='.$id.'&saved=1'));
+        redirect(admin_url('admin.php?page=arm-repair-estimates-builder&action=edit&id='.$id.'&saved=1'));
         exit;
     }
 
     private static function resolve_vehicle_for_save(int $customer_id): array {
-        global $wpdb;
+        global $db;
 
-        $vehicle_table = $wpdb->prefix . 'arm_vehicles';
+        $vehicle_table = $db->prefix . 'arm_vehicles';
         $selector      = $_POST['vehicle_selector'] ?? null;
 
         $mode_candidates = [];
@@ -1312,12 +1312,12 @@ public static function item_row_template() {
             }
         }
 
-        $make_raw  = sanitize_text_field(wp_unslash($_POST['vehicle_make'] ?? ''));
-        $model_raw = sanitize_text_field(wp_unslash($_POST['vehicle_model'] ?? ''));
-        $engine_raw = sanitize_text_field(wp_unslash($_POST['vehicle_engine'] ?? ''));
-        $transmission_raw = sanitize_text_field(wp_unslash($_POST['vehicle_transmission'] ?? ''));
-        $drive_raw = sanitize_text_field(wp_unslash($_POST['vehicle_drive'] ?? ''));
-        $trim_raw  = sanitize_text_field(wp_unslash($_POST['vehicle_trim'] ?? ''));
+        $make_raw  = sanitize_text_field(unslash($_POST['vehicle_make'] ?? ''));
+        $model_raw = sanitize_text_field(unslash($_POST['vehicle_model'] ?? ''));
+        $engine_raw = sanitize_text_field(unslash($_POST['vehicle_engine'] ?? ''));
+        $transmission_raw = sanitize_text_field(unslash($_POST['vehicle_transmission'] ?? ''));
+        $drive_raw = sanitize_text_field(unslash($_POST['vehicle_drive'] ?? ''));
+        $trim_raw  = sanitize_text_field(unslash($_POST['vehicle_trim'] ?? ''));
 
         $snapshot = [
             'vehicle_year' => $year_raw,
@@ -1336,24 +1336,24 @@ public static function item_row_template() {
         $is_existing = in_array($mode, ['existing', 'select'], true);
 
         if ($requested_vehicle_id > 0 && !$is_add_new) {
-            $vehicle_row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $vehicle_table WHERE id=%d", $requested_vehicle_id));
+            $vehicle_row = $db->get_row($db->prepare("SELECT * FROM $vehicle_table WHERE id=%d", $requested_vehicle_id));
             if (!$vehicle_row) {
-                wp_die(__('The selected vehicle could not be found.', 'arm-repair-estimates'));
+                die(__('The selected vehicle could not be found.', 'arm-repair-estimates'));
             }
             if ((int) ($vehicle_row->customer_id ?? 0) !== (int) $customer_id) {
-                wp_die(__('The selected vehicle is not assigned to this customer.', 'arm-repair-estimates'));
+                die(__('The selected vehicle is not assigned to this customer.', 'arm-repair-estimates'));
             }
             $vehicle_id = (int) $vehicle_row->id;
         } elseif ($is_existing && $requested_vehicle_id <= 0) {
-            wp_die(__('Choose an existing vehicle or select "Add New".', 'arm-repair-estimates'));
+            die(__('Choose an existing vehicle or select "Add New".', 'arm-repair-estimates'));
         }
 
         if ($is_add_new) {
             if ($customer_id <= 0) {
-                wp_die(__('Create or select a customer before adding a vehicle.', 'arm-repair-estimates'));
+                die(__('Create or select a customer before adding a vehicle.', 'arm-repair-estimates'));
             }
             if ($make_raw === '' || $model_raw === '') {
-                wp_die(__('Vehicle make and model are required to add a new vehicle.', 'arm-repair-estimates'));
+                die(__('Vehicle make and model are required to add a new vehicle.', 'arm-repair-estimates'));
             }
 
             $columns = self::get_vehicle_table_columns();
@@ -1393,16 +1393,16 @@ public static function item_row_template() {
                 $insert['vin'] = null;
             }
 
-            $result = $wpdb->insert($vehicle_table, $insert);
+            $result = $db->insert($vehicle_table, $insert);
             if ($result === false) {
-                wp_die(__('Unable to add the vehicle to the customer profile.', 'arm-repair-estimates'));
+                die(__('Unable to add the vehicle to the customer profile.', 'arm-repair-estimates'));
             }
-            $vehicle_id = (int) $wpdb->insert_id;
+            $vehicle_id = (int) $db->insert_id;
             if ($vehicle_id > 0) {
-                $vehicle_row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $vehicle_table WHERE id=%d", $vehicle_id));
+                $vehicle_row = $db->get_row($db->prepare("SELECT * FROM $vehicle_table WHERE id=%d", $vehicle_id));
             }
             if (!$vehicle_row) {
-                wp_die(__('Unable to load the newly added vehicle.', 'arm-repair-estimates'));
+                die(__('Unable to load the newly added vehicle.', 'arm-repair-estimates'));
             }
         }
 
@@ -1449,9 +1449,9 @@ public static function item_row_template() {
             return $columns;
         }
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_vehicles';
-        $result = $wpdb->get_col("SHOW COLUMNS FROM `$table`", 0);
+        global $db;
+        $table = $db->prefix . 'arm_vehicles';
+        $result = $db->get_col("SHOW COLUMNS FROM `$table`", 0);
         if (!is_array($result)) {
             $columns = [];
         } else {
@@ -1462,20 +1462,20 @@ public static function item_row_template() {
 
     /** Send estimate email to customer with public link */
     public static function handle_send_estimate() {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('manage_options')) die('Nope');
         check_admin_referer('arm_re_send_estimate');
-        global $wpdb;
-        $tblE = $wpdb->prefix.'arm_estimates';
-        $tblC = $wpdb->prefix.'arm_customers';
-        $tblJ = $wpdb->prefix.'arm_estimate_jobs';
+        global $db;
+        $tblE = $db->prefix.'arm_estimates';
+        $tblC = $db->prefix.'arm_customers';
+        $tblJ = $db->prefix.'arm_estimate_jobs';
         $id = intval($_GET['id'] ?? 0);
-        $est = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblE WHERE id=%d", $id));
-        if (!$est) wp_die('Estimate not found');
+        $est = $db->get_row($db->prepare("SELECT * FROM $tblE WHERE id=%d", $id));
+        if (!$est) die('Estimate not found');
 
-        $cust = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblC WHERE id=%d", $est->customer_id));
-        if (!$cust || !$cust->email) wp_die('Customer email missing');
+        $cust = $db->get_row($db->prepare("SELECT * FROM $tblC WHERE id=%d", $est->customer_id));
+        if (!$cust || !$cust->email) die('Customer email missing');
 
-        $jobs = $wpdb->get_results($wpdb->prepare(
+        $jobs = $db->get_results($db->prepare(
             "SELECT title, technician_id FROM $tblJ WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC",
             (int) $est->id
         ));
@@ -1485,7 +1485,7 @@ public static function item_row_template() {
             : null;
 
         $link = add_query_arg(['arm_estimate'=>$est->token], home_url('/'));
-        $subj = sprintf('Estimate %s from %s', $est->estimate_no, wp_parse_url(home_url(), PHP_URL_HOST));
+        $subj = sprintf('Estimate %s from %s', $est->estimate_no, parse_url(home_url(), PHP_URL_HOST));
         $body = "Hello {$cust->first_name},\n\n"
               . "Please review your estimate {$est->estimate_no} here:\n$link\n\n"
               . "Total: $" . number_format((float)$est->total,2) . "\n\n"
@@ -1519,49 +1519,49 @@ public static function item_row_template() {
 
         $body .= "Thank you!";
 
-        wp_mail($cust->email, $subj, $body);
+        mail($cust->email, $subj, $body);
 
         if ($est->status === 'DRAFT') {
-            $wpdb->update($tblE, ['status'=>'SENT','updated_at'=>current_time('mysql')], ['id'=>$id]);
+            $db->update($tblE, ['status'=>'SENT','updated_at'=>current_time('mysql')], ['id'=>$id]);
         }
 
-        wp_redirect(admin_url('admin.php?page=arm-repair-estimates-builder&action=edit&id='.$id.'&sent=1'));
+        redirect(admin_url('admin.php?page=arm-repair-estimates-builder&action=edit&id='.$id.'&sent=1'));
         exit;
     }
 
     /** Admin mark status */
     public static function handle_mark_status() {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('manage_options')) die('Nope');
         check_admin_referer('arm_re_mark_status');
-        global $wpdb;
+        global $db;
         $id = intval($_GET['id'] ?? 0);
         $status = in_array($_GET['status'] ?? '', ['APPROVED','DECLINED','EXPIRED'], true) ? $_GET['status'] : '';
-        if (!$status) wp_die('Invalid status');
-        $tblE = $wpdb->prefix.'arm_estimates';
+        if (!$status) die('Invalid status');
+        $tblE = $db->prefix.'arm_estimates';
         if ($status === 'APPROVED') {
-            $est = $wpdb->get_row($wpdb->prepare("SELECT technician_id FROM $tblE WHERE id=%d", $id));
+            $est = $db->get_row($db->prepare("SELECT technician_id FROM $tblE WHERE id=%d", $id));
             if (!$est || (int) ($est->technician_id ?? 0) <= 0) {
-                wp_die(__('Assign a technician before approving this estimate.', 'arm-repair-estimates'));
+                die(__('Assign a technician before approving this estimate.', 'arm-repair-estimates'));
             }
         }
-        $wpdb->update($tblE, ['status'=>$status,'updated_at'=>current_time('mysql')], ['id'=>$id]);
-        wp_redirect(admin_url('admin.php?page=arm-repair-estimates-builder&action=edit&id='.$id.'&marked=1'));
+        $db->update($tblE, ['status'=>$status,'updated_at'=>current_time('mysql')], ['id'=>$id]);
+        redirect(admin_url('admin.php?page=arm-repair-estimates-builder&action=edit&id='.$id.'&marked=1'));
         exit;
     }
 
     /** Customer search (email/phone/name) */
     public static function ajax_search_customers() {
-        if (!current_user_can('manage_options')) wp_send_json_error(['error' => 'forbidden'], 403);
+        if (!current_user_can('manage_options')) send_json_error(['error' => 'forbidden'], 403);
 
         $nonce = $_REQUEST['_ajax_nonce'] ?? $_REQUEST['nonce'] ?? '';
-        if (!wp_verify_nonce($nonce, 'arm_re_est_admin')) {
-            wp_send_json_error(['error' => 'invalid_nonce'], 403);
+        if (!verify_nonce($nonce, 'arm_re_est_admin')) {
+            send_json_error(['error' => 'invalid_nonce'], 403);
         }
-        global $wpdb; $tbl = $wpdb->prefix.'arm_customers';
+        global $db; $tbl = $db->prefix.'arm_customers';
         $q = trim(sanitize_text_field($_POST['q'] ?? ''));
-        if ($q === '') wp_send_json_success([]);
-        $like = '%'.$wpdb->esc_like($q).'%';
-        $rows = $wpdb->get_results($wpdb->prepare("
+        if ($q === '') send_json_success([]);
+        $like = '%'.$db->esc_like($q).'%';
+        $rows = $db->get_results($db->prepare("
             SELECT id, first_name, last_name, email, phone, address, city, zip
             FROM $tbl
             WHERE email LIKE %s OR phone LIKE %s OR CONCAT(first_name,' ',last_name) LIKE %s
@@ -1571,30 +1571,30 @@ public static function item_row_template() {
             $r['name'] = trim(($r['first_name'] ?? '').' '.($r['last_name'] ?? ''));
             return $r;
         }, $rows ?: []);
-        wp_send_json_success($out);
+        send_json_success($out);
     }
 
     public static function ajax_customer_vehicles() {
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['error' => 'forbidden'], 403);
+            send_json_error(['error' => 'forbidden'], 403);
         }
 
         $nonce = $_REQUEST['_ajax_nonce'] ?? $_REQUEST['nonce'] ?? '';
-        if (!wp_verify_nonce($nonce, 'arm_re_est_admin')) {
-            wp_send_json_error(['error' => 'invalid_nonce'], 403);
+        if (!verify_nonce($nonce, 'arm_re_est_admin')) {
+            send_json_error(['error' => 'invalid_nonce'], 403);
         }
 
         $customer_id = (int) ($_POST['customer_id'] ?? 0);
         $selected_id = (int) ($_POST['selected_vehicle_id'] ?? 0);
 
         if ($customer_id <= 0) {
-            wp_send_json_success([
+            send_json_success([
                 'options_html' => self::build_vehicle_selector_options([], $selected_id),
             ]);
         }
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_vehicles';
+        global $db;
+        $table = $db->prefix . 'arm_vehicles';
         $columns = self::get_vehicle_table_columns();
 
         $conditions = 'customer_id = %d';
@@ -1607,11 +1607,11 @@ public static function item_row_template() {
         }
 
         $sql = "SELECT * FROM $table WHERE $conditions ORDER BY $order_by";
-        $rows = $wpdb->get_results($wpdb->prepare($sql, $customer_id));
+        $rows = $db->get_results($db->prepare($sql, $customer_id));
 
         $options_html = self::build_vehicle_selector_options($rows ?: [], $selected_id);
 
-        wp_send_json_success([
+        send_json_success([
             'options_html' => $options_html,
         ]);
     }
@@ -1673,6 +1673,6 @@ public static function item_row_template() {
         return bin2hex(random_bytes(16));
     }
     private static function generate_estimate_no() {
-        return 'EST-' . date('Ymd') . '-' . wp_rand(1000,9999);
+        return 'EST-' . date('Ymd') . '-' . rand(1000,9999);
     }
 }

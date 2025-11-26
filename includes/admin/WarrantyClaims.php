@@ -26,7 +26,7 @@ final class WarrantyClaims {
 
     public static function render_admin(): void {
         if (!current_user_can('manage_options')) {
-            wp_die(esc_html__('You do not have permission to view this page.','arm-repair-estimates'));
+            die(esc_html__('You do not have permission to view this page.','arm-repair-estimates'));
         }
         $view = isset($_GET['view']) ? (int) $_GET['view'] : 0;
         if ($view > 0) {
@@ -37,19 +37,19 @@ final class WarrantyClaims {
     }
 
     private static function render_list(): void {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_warranty_claims';
+        global $db;
+        $tbl = $db->prefix . 'arm_warranty_claims';
 
         $page     = max(1, (int) ($_GET['paged'] ?? 1));
         $per_page = 20;
         $offset   = ($page - 1) * $per_page;
 
-        $rows = $wpdb->get_results($wpdb->prepare(
+        $rows = $db->get_results($db->prepare(
             "SELECT id, invoice_id, first_name, last_name, email, subject, status, created_at
              FROM $tbl ORDER BY created_at DESC LIMIT %d OFFSET %d",
              $per_page, $offset
         ));
-        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM $tbl");
+        $total = (int) $db->get_var("SELECT COUNT(*) FROM $tbl");
         $pages = max(1, (int) ceil($total / $per_page));
 
         ?>
@@ -104,9 +104,9 @@ final class WarrantyClaims {
     }
 
     private static function render_detail(int $id): void {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_warranty_claims';
-        $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tbl WHERE id=%d", $id));
+        global $db;
+        $tbl = $db->prefix . 'arm_warranty_claims';
+        $row = $db->get_row($db->prepare("SELECT * FROM $tbl WHERE id=%d", $id));
         if (!$row) {
             echo '<div class="wrap"><h1>' . esc_html__('Warranty Claims','arm-repair-estimates') . '</h1>';
             echo '<div class="notice notice-error"><p>' . esc_html__('Claim not found.','arm-repair-estimates') . '</p></div></div>';

@@ -21,51 +21,51 @@ final class WarrantyClaims
             return '<p>' . esc_html__('You must be logged in to view warranty claims.', 'arm-repair-estimates') . '</p>';
         }
 
-        $u = wp_get_current_user();
+        $u = get_current_user();
         $email = (string) $u->user_email;
         if ($email === '') {
             return '<p>' . esc_html__('Your account is missing an email address.', 'arm-repair-estimates') . '</p>';
         }
 
-        global $wpdb;
-        $tbl_claims = $wpdb->prefix . 'arm_warranty_claims';
-        $tbl_msgs   = $wpdb->prefix . 'arm_warranty_claim_messages';
+        global $db;
+        $tbl_claims = $db->prefix . 'arm_warranty_claims';
+        $tbl_msgs   = $db->prefix . 'arm_warranty_claim_messages';
 
         
-        if (!empty($_POST['arm_claim_nonce']) && wp_verify_nonce((string) $_POST['arm_claim_nonce'], 'arm_claim_reply')) {
+        if (!empty($_POST['arm_claim_nonce']) && verify_nonce((string) $_POST['arm_claim_nonce'], 'arm_claim_reply')) {
             $claim_id = (int) ($_GET['claim_id'] ?? 0);
             $message  = trim((string) ($_POST['reply_message'] ?? ''));
             if ($claim_id > 0 && $message !== '') {
                 
-                $owned = (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM $tbl_claims WHERE id=%d AND email=%s", $claim_id, $email));
+                $owned = (int) $db->get_var($db->prepare("SELECT COUNT(*) FROM $tbl_claims WHERE id=%d AND email=%s", $claim_id, $email));
                 if ($owned > 0) {
                     
-                    $has_msgs_table = (int) $wpdb->get_var($wpdb->prepare(
+                    $has_msgs_table = (int) $db->get_var($db->prepare(
                         "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name=%s", $tbl_msgs
                     )) > 0;
 
                     if ($has_msgs_table) {
-                        $wpdb->insert($tbl_msgs, [
+                        $db->insert($tbl_msgs, [
                             'claim_id'   => $claim_id,
                             'actor'      => 'customer',
-                            'message'    => wp_kses_post($message),
+                            'message'    => kses_post($message),
                             'created_at' => current_time('mysql'),
                         ], ['%d','%s','%s','%s']);
                     } else {
                         
-                        $cols = array_map('strtolower', $wpdb->get_col(
-                            $wpdb->prepare("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME=%s", $tbl_claims)
+                        $cols = array_map('strtolower', $db->get_col(
+                            $db->prepare("SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME=%s", $tbl_claims)
                         ) ?: []);
                         $data = [];
                         $fmt  = [];
                         if (in_array('last_message', $cols, true)) {
-                            $data['last_message'] = wp_kses_post($message); $fmt[] = '%s';
+                            $data['last_message'] = kses_post($message); $fmt[] = '%s';
                         }
                         if (in_array('updated_at', $cols, true)) {
                             $data['updated_at'] = current_time('mysql'); $fmt[] = '%s';
                         }
                         if ($data) {
-                            $wpdb->update($tbl_claims, $data, ['id' => $claim_id], $fmt, ['%d']);
+                            $db->update($tbl_claims, $data, ['id' => $claim_id], $fmt, ['%d']);
                         }
                     }
                     echo '<div class="notice notice-success"><p>' . esc_html__('Your reply was sent.', 'arm-repair-estimates') . '</p></div>';
@@ -84,9 +84,9 @@ final class WarrantyClaims
 
     private static function render_list(string $email): string
     {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_warranty_claims';
-        $rows = $wpdb->get_results($wpdb->prepare(
+        global $db;
+        $tbl = $db->prefix . 'arm_warranty_claims';
+        $rows = $db->get_results($db->prepare(
             "SELECT id, invoice_id, subject, status, created_at FROM $tbl WHERE email=%s ORDER BY created_at DESC",
             $email
         ));
@@ -130,18 +130,18 @@ final class WarrantyClaims
 
     private static function render_detail(int $id, string $email): string
     {
-        global $wpdb;
-        $tbl  = $wpdb->prefix . 'arm_warranty_claims';
-        $msgs = $wpdb->prefix . 'arm_warranty_claim_messages';
+        global $db;
+        $tbl  = $db->prefix . 'arm_warranty_claims';
+        $msgs = $db->prefix . 'arm_warranty_claim_messages';
 
-        $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tbl WHERE id=%d AND email=%s", $id, $email));
+        $row = $db->get_row($db->prepare("SELECT * FROM $tbl WHERE id=%d AND email=%s", $id, $email));
         if (!$row) return '<p>' . esc_html__('Claim not found.', 'arm-repair-estimates') . '</p>';
 
-        $has_msgs_table = (int) $wpdb->get_var($wpdb->prepare(
+        $has_msgs_table = (int) $db->get_var($db->prepare(
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name=%s", $msgs
         )) > 0;
 
-        $convo = $has_msgs_table ? $wpdb->get_results($wpdb->prepare(
+        $convo = $has_msgs_table ? $db->get_results($db->prepare(
             "SELECT actor, message, created_at FROM $msgs WHERE claim_id=%d ORDER BY created_at ASC", $id
         )) : [];
 
@@ -158,7 +158,7 @@ final class WarrantyClaims
             <h3><?php esc_html_e('Conversation', 'arm-repair-estimates'); ?></h3>
             <ul>
               <?php foreach ($convo as $m): ?>
-                <li><em><?php echo esc_html(ucfirst((string) $m->actor)); ?></em> — <small><?php echo esc_html((string) $m->created_at); ?></small><br><?php echo wp_kses_post((string) $m->message); ?></li>
+                <li><em><?php echo esc_html(ucfirst((string) $m->actor)); ?></em> — <small><?php echo esc_html((string) $m->created_at); ?></small><br><?php echo kses_post((string) $m->message); ?></li>
               <?php endforeach; ?>
             </ul>
           <?php endif; ?>
@@ -166,7 +166,7 @@ final class WarrantyClaims
           <?php if (!in_array(strtoupper((string) $row->status), ['RESOLVED','REJECTED'], true)): ?>
             <h3><?php esc_html_e('Post a Reply', 'arm-repair-estimates'); ?></h3>
             <form method="post">
-              <?php wp_nonce_field('arm_claim_reply', 'arm_claim_nonce'); ?>
+              <?php nonce_field('arm_claim_reply', 'arm_claim_nonce'); ?>
               <p><textarea name="reply_message" rows="5" class="large-text" required></textarea></p>
               <p><button type="submit" class="button button-primary"><?php esc_html_e('Send Reply', 'arm-repair-estimates'); ?></button></p>
             </form>

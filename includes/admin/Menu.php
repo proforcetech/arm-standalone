@@ -134,9 +134,9 @@ class Menu
     {
         if (!current_user_can('manage_options')) return;
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_estimate_requests';
-        $rows  = $wpdb->get_results("SELECT * FROM $table ORDER BY created_at DESC LIMIT 50");
+        global $db;
+        $table = $db->prefix . 'arm_estimate_requests';
+        $rows  = $db->get_results("SELECT * FROM $table ORDER BY created_at DESC LIMIT 50");
         ?>
         <div class="wrap">
           <h1><?php _e('Estimate Requests', 'arm-repair-estimates'); ?></h1>

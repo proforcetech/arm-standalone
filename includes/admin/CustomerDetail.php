@@ -6,14 +6,14 @@ if (!defined('ABSPATH')) exit;
 class CustomerDetail {
 
     public static function render($customer_id) {
-        global $wpdb;
+        global $db;
 
-        $tbl_cust = $wpdb->prefix . 'arm_customers';
-        $tbl_est  = $wpdb->prefix . 'arm_estimates';
-        $tbl_inv  = $wpdb->prefix . 'arm_invoices';
-        $tbl_veh  = $wpdb->prefix . 'arm_vehicles';
+        $tbl_cust = $db->prefix . 'arm_customers';
+        $tbl_est  = $db->prefix . 'arm_estimates';
+        $tbl_inv  = $db->prefix . 'arm_invoices';
+        $tbl_veh  = $db->prefix . 'arm_vehicles';
 
-        $customer = $wpdb->get_row($wpdb->prepare(
+        $customer = $db->get_row($db->prepare(
             "SELECT * FROM $tbl_cust WHERE id=%d",
             $customer_id
         ));
@@ -27,11 +27,11 @@ class CustomerDetail {
         $vehicle_fields = ['year', 'make', 'model', 'engine', 'transmission', 'drive', 'trim'];
         $vehicle_input = array_fill_keys($vehicle_fields, '');
 
-        if (!empty($_POST['arm_add_vehicle_nonce']) && wp_verify_nonce($_POST['arm_add_vehicle_nonce'], 'arm_add_vehicle')) {
+        if (!empty($_POST['arm_add_vehicle_nonce']) && verify_nonce($_POST['arm_add_vehicle_nonce'], 'arm_add_vehicle')) {
             foreach ($vehicle_fields as $field) {
                 $key = 'vehicle_' . $field;
                 if (isset($_POST[$key])) {
-                    $value = sanitize_text_field(wp_unslash($_POST[$key]));
+                    $value = sanitize_text_field(unslash($_POST[$key]));
                     $vehicle_input[$field] = $value;
                 }
             }
@@ -54,7 +54,7 @@ class CustomerDetail {
                     'deleted_at'    => null,
                 ];
 
-                $inserted = $wpdb->insert($tbl_veh, $data);
+                $inserted = $db->insert($tbl_veh, $data);
                 if ($inserted) {
                     echo '<div class="updated"><p>' . esc_html__('Vehicle added successfully.', 'arm-repair-estimates') . '</p></div>';
                     $vehicle_input = array_fill_keys($vehicle_fields, '');
@@ -65,7 +65,7 @@ class CustomerDetail {
         }
 
         
-        if (!empty($_POST['arm_import_csv_nonce']) && wp_verify_nonce($_POST['arm_import_csv_nonce'], 'arm_import_csv') && !empty($_FILES['csv_file']['tmp_name'])) {
+        if (!empty($_POST['arm_import_csv_nonce']) && verify_nonce($_POST['arm_import_csv_nonce'], 'arm_import_csv') && !empty($_FILES['csv_file']['tmp_name'])) {
             $handle = fopen($_FILES['csv_file']['tmp_name'], 'r');
             if ($handle) {
                 $row = 0; $imported = 0;
@@ -74,7 +74,7 @@ class CustomerDetail {
                     if ($row === 1) continue; 
                     [$year, $make, $model, $engine, $trim] = array_pad($data, 5, '');
                     if (!$year || !$make || !$model) continue; 
-                    $wpdb->insert($tbl_veh, [
+                    $db->insert($tbl_veh, [
                         'customer_id' => $customer_id,
                         'year'        => intval($year),
                         'make'        => sanitize_text_field($make),
@@ -97,7 +97,7 @@ class CustomerDetail {
 
         
         if (!empty($_GET['arm_export_csv']) && check_admin_referer('arm_export_csv_'.$customer_id)) {
-        $vehicles = $wpdb->get_results($wpdb->prepare(
+        $vehicles = $db->get_results($db->prepare(
             "SELECT year, make, model, engine, trim FROM $tbl_veh WHERE customer_id=%d AND (deleted_at IS NULL OR deleted_at='0000-00-00 00:00:00') ORDER BY year DESC, make ASC, model ASC",
             $customer_id
         ), ARRAY_A);
@@ -124,7 +124,7 @@ class CustomerDetail {
         echo '<strong>Address:</strong> ' . esc_html($customer->address . ', ' . $customer->city . ' ' . $customer->zip) . '</p>';
 
         
-        $export_url = wp_nonce_url(
+        $export_url = nonce_url(
             add_query_arg(['arm_export_csv'=>1]),
             'arm_export_csv_'.$customer_id
         );
@@ -145,7 +145,7 @@ class CustomerDetail {
         
         echo '<h3>' . esc_html__('Add Vehicle', 'arm-repair-estimates') . '</h3>';
         echo '<form method="post" class="arm-add-vehicle">';
-        wp_nonce_field('arm_add_vehicle', 'arm_add_vehicle_nonce');
+        nonce_field('arm_add_vehicle', 'arm_add_vehicle_nonce');
         echo '<div id="arm-vehicle-cascading" class="arm-vehicle-cascading" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">';
 
         $field_configs = [
@@ -235,14 +235,14 @@ class CustomerDetail {
         
         echo '<h3>Import Vehicles from CSV</h3>';
         echo '<form method="post" enctype="multipart/form-data">';
-        wp_nonce_field('arm_import_csv', 'arm_import_csv_nonce');
+        nonce_field('arm_import_csv', 'arm_import_csv_nonce');
         echo '<input type="file" name="csv_file" accept=".csv" required> ';
         submit_button('Upload & Import CSV');
         echo '<p class="description">CSV format: year, make, model, engine, trim</p>';
         echo '</form>';
 
         
-        $vehicles = $wpdb->get_results($wpdb->prepare(
+        $vehicles = $db->get_results($db->prepare(
             "SELECT * FROM $tbl_veh WHERE customer_id=%d AND (deleted_at IS NULL OR deleted_at='0000-00-00 00:00:00') ORDER BY year DESC, make ASC, model ASC",
             $customer_id
         ));

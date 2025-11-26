@@ -1,26 +1,26 @@
 <?php
 /**
- * Auto-initialize $wpdb when accessed
+ * Auto-initialize $db when accessed
  */
 
 declare(strict_types=1);
 
-if (!function_exists('arm_ensure_wpdb')) {
-    function arm_ensure_wpdb(): void
+if (!function_exists('arm_ensure_db')) {
+    function arm_ensure_db(): void
     {
-        global $wpdb;
+        global $db;
 
-        if ($wpdb === null || !($wpdb instanceof wpdb)) {
+        if ($db === null || !($db instanceof db)) {
             try {
-                $wpdb = wpdb::getInstance();
+                $db = db::getInstance();
             } catch (Exception $e) {
                 // Database not configured - log error but don't fatal
                 error_log('ARM Database Error: ' . $e->getMessage());
 
-                // Create a stub wpdb that won't crash
-                if (!class_exists('wpdb_stub')) {
-                    class wpdb_stub {
-                        public string $prefix = 'wp_';
+                // Create a stub db that won't crash
+                if (!class_exists('db_stub')) {
+                    class db_stub {
+                        public string $prefix = '';
                         public ?int $insert_id = null;
                         public ?int $rows_affected = null;
                         public ?string $last_error = 'Database not configured';
@@ -33,11 +33,11 @@ if (!function_exists('arm_ensure_wpdb')) {
                     }
                 }
 
-                $wpdb = new wpdb_stub();
+                $db = new db_stub();
             }
         }
     }
 }
 
-// Ensure wpdb is available immediately
-arm_ensure_wpdb();
+// Ensure db is available immediately
+arm_ensure_db();

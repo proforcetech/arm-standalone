@@ -12,24 +12,24 @@ if (!function_exists('current_user_can')) {
     }
 }
 
-if (!function_exists('wp_create_nonce')) {
-    function wp_create_nonce(string $action = 'default'): string
+if (!function_exists('create_nonce')) {
+    function create_nonce(string $action = 'default'): string
     {
         $auth = AuthService::fromEnvironment();
         return $auth->csrf()->issue($action);
     }
 }
 
-if (!function_exists('wp_verify_nonce')) {
-    function wp_verify_nonce($nonce, string $action = 'default'): bool
+if (!function_exists('verify_nonce')) {
+    function verify_nonce($nonce, string $action = 'default'): bool
     {
         $auth = AuthService::fromEnvironment();
         return $auth->csrf()->verify($nonce, $action);
     }
 }
 
-if (!function_exists('wp_die')) {
-    function wp_die(string $message = 'Forbidden', int $status = 403): void
+if (!function_exists('die')) {
+    function die(string $message = 'Forbidden', int $status = 403): void
     {
         http_response_code($status);
         echo $message;
@@ -37,4 +37,4 @@ if (!function_exists('wp_die')) {
     }
 }
 
-// wp_send_json_error is now defined in ajax-functions.php
+// send_json_error is now defined in ajax-functions.php

@@ -2,8 +2,8 @@
 namespace ARM\TimeLogs;
 
 use DateTime;
-use WP_Error;
-use wpdb;
+use Error;
+use db;
 
 if (!defined('ABSPATH')) exit;
 
@@ -33,10 +33,10 @@ final class Admin
     public static function render(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have permission to access this page.', 'arm-repair-estimates'));
+            die(__('You do not have permission to access this page.', 'arm-repair-estimates'));
         }
 
-        global $wpdb;
+        global $db;
 
         [$start_filter, $end_filter, $start_mysql, $end_mysql] = self::get_date_range();
 
@@ -46,8 +46,8 @@ final class Admin
         $edit_id = isset($_GET['entry']) ? absint($_GET['entry']) : 0;
         $entry_to_edit = $edit_id ? self::get_entry_with_context($edit_id) : null;
 
-        $notice_type = isset($_GET['time_type']) ? sanitize_key(wp_unslash($_GET['time_type'])) : '';
-        $notice_msg  = isset($_GET['time_msg']) ? sanitize_text_field(wp_unslash(urldecode($_GET['time_msg']))) : '';
+        $notice_type = isset($_GET['time_type']) ? sanitize_key(unslash($_GET['time_type'])) : '';
+        $notice_msg  = isset($_GET['time_msg']) ? sanitize_text_field(unslash(urldecode($_GET['time_msg']))) : '';
 
         $admin_post = admin_url('admin-post.php');
 
@@ -76,7 +76,7 @@ final class Admin
 
             <h2><?php esc_html_e('Add Manual Time Entry', 'arm-repair-estimates'); ?></h2>
             <form method="post" action="<?php echo esc_url($admin_post); ?>" class="arm-time-logs__create">
-                <?php wp_nonce_field('arm_time_entry_create'); ?>
+                <?php nonce_field('arm_time_entry_create'); ?>
                 <input type="hidden" name="action" value="arm_time_entry_create">
                 <p>
                     <label for="arm-time-job-id"><?php esc_html_e('Job ID', 'arm-repair-estimates'); ?></label><br>
@@ -112,7 +112,7 @@ final class Admin
                 <hr>
                 <h2><?php esc_html_e('Edit Time Entry', 'arm-repair-estimates'); ?></h2>
                 <form method="post" action="<?php echo esc_url($admin_post); ?>" class="arm-time-logs__edit">
-                    <?php wp_nonce_field('arm_time_entry_save'); ?>
+                    <?php nonce_field('arm_time_entry_save'); ?>
                     <input type="hidden" name="action" value="arm_time_entry_save">
                     <input type="hidden" name="entry_id" value="<?php echo esc_attr($entry_to_edit['id']); ?>">
                     <p><strong><?php echo esc_html(sprintf(__('Entry #%d', 'arm-repair-estimates'), $entry_to_edit['id'])); ?></strong></p>
@@ -234,7 +234,7 @@ final class Admin
     public static function handle_save(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have permission to perform this action.', 'arm-repair-estimates'));
+            die(__('You do not have permission to perform this action.', 'arm-repair-estimates'));
         }
 
         check_admin_referer('arm_time_entry_save');
@@ -244,10 +244,10 @@ final class Admin
             self::redirect('error', __('Missing entry ID.', 'arm-repair-estimates'));
         }
 
-        $start_raw = isset($_POST['start_at']) ? sanitize_text_field(wp_unslash($_POST['start_at'])) : '';
-        $end_raw   = isset($_POST['end_at']) ? sanitize_text_field(wp_unslash($_POST['end_at'])) : '';
-        $notes     = isset($_POST['notes']) ? sanitize_textarea_field(wp_unslash($_POST['notes'])) : '';
-        $reason    = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
+        $start_raw = isset($_POST['start_at']) ? sanitize_text_field(unslash($_POST['start_at'])) : '';
+        $end_raw   = isset($_POST['end_at']) ? sanitize_text_field(unslash($_POST['end_at'])) : '';
+        $notes     = isset($_POST['notes']) ? sanitize_textarea_field(unslash($_POST['notes'])) : '';
+        $reason    = isset($_POST['reason']) ? sanitize_textarea_field(unslash($_POST['reason'])) : '';
 
         if ($reason === '') {
             self::redirect('error', __('Please provide an adjustment reason.', 'arm-repair-estimates'));
@@ -283,7 +283,7 @@ final class Admin
         }
 
         $result = Controller::update_entry($entry_id, $data, get_current_user_id(), $reason);
-        if ($result instanceof WP_Error) {
+        if ($result instanceof Error) {
             self::redirect('error', $result->get_error_message());
         }
 
@@ -293,17 +293,17 @@ final class Admin
     public static function handle_create(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have permission to perform this action.', 'arm-repair-estimates'));
+            die(__('You do not have permission to perform this action.', 'arm-repair-estimates'));
         }
 
         check_admin_referer('arm_time_entry_create');
 
         $job_id        = isset($_POST['job_id']) ? absint($_POST['job_id']) : 0;
         $technician_id = isset($_POST['technician_id']) ? absint($_POST['technician_id']) : 0;
-        $start_raw     = isset($_POST['start_at']) ? sanitize_text_field(wp_unslash($_POST['start_at'])) : '';
-        $end_raw       = isset($_POST['end_at']) ? sanitize_text_field(wp_unslash($_POST['end_at'])) : '';
-        $notes         = isset($_POST['notes']) ? sanitize_textarea_field(wp_unslash($_POST['notes'])) : '';
-        $reason        = isset($_POST['reason']) ? sanitize_textarea_field(wp_unslash($_POST['reason'])) : '';
+        $start_raw     = isset($_POST['start_at']) ? sanitize_text_field(unslash($_POST['start_at'])) : '';
+        $end_raw       = isset($_POST['end_at']) ? sanitize_text_field(unslash($_POST['end_at'])) : '';
+        $notes         = isset($_POST['notes']) ? sanitize_textarea_field(unslash($_POST['notes'])) : '';
+        $reason        = isset($_POST['reason']) ? sanitize_textarea_field(unslash($_POST['reason'])) : '';
 
         if (!$job_id || !$technician_id) {
             self::redirect('error', __('Job ID and technician ID are required.', 'arm-repair-estimates'));
@@ -333,7 +333,7 @@ final class Admin
         }
 
         $result = Controller::create_manual_entry($job_id, $technician_id, $start_at, $end_at, $notes, get_current_user_id(), $reason);
-        if ($result instanceof WP_Error) {
+        if ($result instanceof Error) {
             self::redirect('error', $result->get_error_message());
         }
 
@@ -342,7 +342,7 @@ final class Admin
 
     private static function redirect(string $type, string $message): void
     {
-        $referer = wp_get_referer();
+        $referer = get_referer();
         $target  = $referer && strpos($referer, 'page=' . self::MENU_SLUG) !== false
             ? $referer
             : admin_url('admin.php?page=' . self::MENU_SLUG);
@@ -352,17 +352,17 @@ final class Admin
             'time_msg'  => rawurlencode($message),
         ], $target);
 
-        wp_safe_redirect($target);
+        safe_redirect($target);
         exit;
     }
 
     private static function get_date_range(): array
     {
-        $tz = wp_timezone();
+        $tz = timezone();
         $now = new DateTime('now', $tz);
 
-        $start_raw = isset($_GET['start']) ? sanitize_text_field(wp_unslash($_GET['start'])) : '';
-        $end_raw   = isset($_GET['end']) ? sanitize_text_field(wp_unslash($_GET['end'])) : '';
+        $start_raw = isset($_GET['start']) ? sanitize_text_field(unslash($_GET['start'])) : '';
+        $end_raw   = isset($_GET['end']) ? sanitize_text_field(unslash($_GET['end'])) : '';
 
         $start = $start_raw ? DateTime::createFromFormat('Y-m-d', $start_raw, $tz) : null;
         $end   = $end_raw ? DateTime::createFromFormat('Y-m-d', $end_raw, $tz) : null;
@@ -390,15 +390,15 @@ final class Admin
 
     private static function query_entries(string $start, string $end): array
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return [];
         }
 
         $entries   = Controller::table_entries();
-        $jobs      = $wpdb->prefix . 'arm_estimate_jobs';
-        $estimates = $wpdb->prefix . 'arm_estimates';
-        $users     = $wpdb->users;
+        $jobs      = $db->prefix . 'arm_estimate_jobs';
+        $estimates = $db->prefix . 'arm_estimates';
+        $users     = $db->users;
 
         $sql = "SELECT t.*, j.title AS job_title, u.display_name AS technician_name
                 FROM $entries t
@@ -408,18 +408,18 @@ final class Admin
                 ORDER BY t.start_at DESC
                 LIMIT 200";
 
-        return $wpdb->get_results($wpdb->prepare($sql, $start, $end), ARRAY_A) ?: [];
+        return $db->get_results($db->prepare($sql, $start, $end), ARRAY_A) ?: [];
     }
 
     private static function query_adjustments(string $start, string $end): array
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return [];
         }
 
         $adjust = Controller::table_adjustments();
-        $users  = $wpdb->users;
+        $users  = $db->users;
 
         $sql = "SELECT a.*, u.display_name AS admin_name
                 FROM $adjust a
@@ -428,25 +428,25 @@ final class Admin
                 ORDER BY a.created_at DESC
                 LIMIT 200";
 
-        return $wpdb->get_results($wpdb->prepare($sql, $start, $end), ARRAY_A) ?: [];
+        return $db->get_results($db->prepare($sql, $start, $end), ARRAY_A) ?: [];
     }
 
     private static function get_entry_with_context(int $entry_id): ?array
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return null;
         }
 
         $entries = Controller::table_entries();
-        $users   = $wpdb->users;
+        $users   = $db->users;
 
         $sql = "SELECT t.*, u.display_name AS technician_name
                 FROM $entries t
                 LEFT JOIN $users u ON u.ID = t.technician_id
                 WHERE t.id = %d";
 
-        $row = $wpdb->get_row($wpdb->prepare($sql, $entry_id), ARRAY_A);
+        $row = $db->get_row($db->prepare($sql, $entry_id), ARRAY_A);
         if (!$row) {
             return null;
         }
@@ -461,7 +461,7 @@ final class Admin
             return null;
         }
 
-        $tz = wp_timezone();
+        $tz = timezone();
         $dt = DateTime::createFromFormat('Y-m-d\TH:i', $value, $tz);
         if (!$dt) {
             $dt = DateTime::createFromFormat('Y-m-d H:i:s', $value, $tz);
@@ -478,7 +478,7 @@ final class Admin
         if (!$value) {
             return '';
         }
-        $tz = wp_timezone();
+        $tz = timezone();
         $dt = DateTime::createFromFormat('Y-m-d H:i:s', $value, $tz);
         if (!$dt) {
             return '';

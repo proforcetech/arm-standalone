@@ -42,10 +42,10 @@ final class Reminders
         echo '<div class="wrap">';
 
         if (!empty($_GET['message'])) {
-            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html(wp_unslash($_GET['message'])) . '</p></div>';
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html(unslash($_GET['message'])) . '</p></div>';
         }
         if (!empty($_GET['error'])) {
-            echo '<div class="notice notice-error is-dismissible"><p>' . esc_html(wp_unslash($_GET['error'])) . '</p></div>';
+            echo '<div class="notice notice-error is-dismissible"><p>' . esc_html(unslash($_GET['error'])) . '</p></div>';
         }
 
         switch ($view) {
@@ -65,10 +65,10 @@ final class Reminders
 
     private static function render_list(): void
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_reminder_campaigns';
+        global $db;
+        $table = $db->prefix . 'arm_reminder_campaigns';
 
-        $rows = $wpdb->get_results("SELECT * FROM $table ORDER BY created_at DESC");
+        $rows = $db->get_results("SELECT * FROM $table ORDER BY created_at DESC");
         $new_url = admin_url('admin.php?page=arm-reminders&view=edit');
 
         echo '<h1 class="wp-heading-inline">' . esc_html__('Reminder Campaigns', 'arm-repair-estimates') . '</h1>';
@@ -99,7 +99,7 @@ final class Reminders
                 $logs_url = add_query_arg(['page' => 'arm-reminders', 'view' => 'logs', 'id' => (int) $row->id], admin_url('admin.php'));
                 $toggle_action = $row->status === 'active' ? 'pause' : 'activate';
                 $toggle_label  = $row->status === 'active' ? __('Pause', 'arm-repair-estimates') : __('Activate', 'arm-repair-estimates');
-                $toggle_nonce  = wp_create_nonce('arm_re_reminder_toggle');
+                $toggle_nonce  = create_nonce('arm_re_reminder_toggle');
                 $toggle_url    = admin_url('admin-post.php');
 
                 $freq = ucfirst($row->frequency_unit);
@@ -129,7 +129,7 @@ final class Reminders
                 echo '<input type="hidden" name="state" value="' . esc_attr($toggle_action) . '">';
                 submit_button($toggle_label, 'link', '', false);
                 echo '</form> | ';
-                $delete_nonce = wp_create_nonce('arm_re_reminder_delete');
+                $delete_nonce = create_nonce('arm_re_reminder_delete');
                 echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" style="display:inline;" onsubmit="return confirm(\'' . esc_js(__('Archive this campaign?', 'arm-repair-estimates')) . '\');">';
                 echo '<input type="hidden" name="action" value="arm_re_reminder_delete">';
                 echo '<input type="hidden" name="_wpnonce" value="' . esc_attr($delete_nonce) . '">';
@@ -146,12 +146,12 @@ final class Reminders
 
     private static function render_form(int $id): void
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_reminder_campaigns';
-        $row = $id ? $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id=%d", $id)) : null;
+        global $db;
+        $table = $db->prefix . 'arm_reminder_campaigns';
+        $row = $id ? $db->get_row($db->prepare("SELECT * FROM $table WHERE id=%d", $id)) : null;
 
         $title = $id ? __('Edit Reminder Campaign', 'arm-repair-estimates') : __('Add Reminder Campaign', 'arm-repair-estimates');
-        $nonce = wp_create_nonce('arm_re_reminder_save');
+        $nonce = create_nonce('arm_re_reminder_save');
 
         echo '<h1>' . esc_html($title) . '</h1>';
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
@@ -220,12 +220,12 @@ final class Reminders
             return;
         }
 
-        global $wpdb;
-        $campaigns_table = $wpdb->prefix . 'arm_reminder_campaigns';
-        $logs_table      = $wpdb->prefix . 'arm_reminder_logs';
-        $prefs_table     = $wpdb->prefix . 'arm_reminder_preferences';
+        global $db;
+        $campaigns_table = $db->prefix . 'arm_reminder_campaigns';
+        $logs_table      = $db->prefix . 'arm_reminder_logs';
+        $prefs_table     = $db->prefix . 'arm_reminder_preferences';
 
-        $campaign = $wpdb->get_row($wpdb->prepare("SELECT * FROM $campaigns_table WHERE id=%d", $id));
+        $campaign = $db->get_row($db->prepare("SELECT * FROM $campaigns_table WHERE id=%d", $id));
         if (!$campaign) {
             echo '<p>' . esc_html__('Campaign not found.', 'arm-repair-estimates') . '</p>';
             return;
@@ -233,8 +233,8 @@ final class Reminders
 
         echo '<h1>' . esc_html(sprintf(__('Reminder Logs — %s', 'arm-repair-estimates'), $campaign->name)) . '</h1>';
 
-        $logs = $wpdb->get_results(
-            $wpdb->prepare(
+        $logs = $db->get_results(
+            $db->prepare(
                 "SELECT l.*, p.email, p.phone FROM $logs_table l LEFT JOIN $prefs_table p ON l.preference_id=p.id WHERE l.campaign_id=%d ORDER BY l.created_at DESC LIMIT 250",
                 $id
             )
@@ -271,7 +271,7 @@ final class Reminders
             echo '<td>' . esc_html($log->sent_at ?: '—') . '</td>';
             $recipient = $log->channel === 'sms' ? ($log->phone ?: '—') : ($log->email ?: '—');
             echo '<td>' . esc_html($recipient) . '</td>';
-            echo '<td><code>' . esc_html(wp_trim_words($log->message_body ?? '', 30)) . '</code></td>';
+            echo '<td><code>' . esc_html(trim_words($log->message_body ?? '', 30)) . '</code></td>';
             echo '<td>' . esc_html($log->error_message ?: '') . '</td>';
             echo '</tr>';
         }
@@ -282,28 +282,28 @@ final class Reminders
     public static function handle_save(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have permission.', 'arm-repair-estimates'));
+            die(__('You do not have permission.', 'arm-repair-estimates'));
         }
 
         check_admin_referer('arm_re_reminder_save');
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_reminder_campaigns';
+        global $db;
+        $table = $db->prefix . 'arm_reminder_campaigns';
 
         $id          = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-        $name        = sanitize_text_field(wp_unslash($_POST['name'] ?? ''));
-        $description = wp_kses_post(wp_unslash($_POST['description'] ?? ''));
+        $name        = sanitize_text_field(unslash($_POST['name'] ?? ''));
+        $description = kses_post(unslash($_POST['description'] ?? ''));
         $status      = sanitize_key($_POST['status'] ?? 'draft');
         $channel     = sanitize_key($_POST['channel'] ?? 'email');
         $freq_unit   = sanitize_key($_POST['frequency_unit'] ?? 'one_time');
         $freq_int    = max(1, (int) ($_POST['frequency_interval'] ?? 1));
         $next_run    = self::sanitize_datetime($_POST['next_run_at'] ?? '');
-        $email_subj  = sanitize_text_field(wp_unslash($_POST['email_subject'] ?? ''));
-        $email_body  = wp_kses_post(wp_unslash($_POST['email_body'] ?? ''));
-        $sms_body    = sanitize_textarea_field(wp_unslash($_POST['sms_body'] ?? ''));
+        $email_subj  = sanitize_text_field(unslash($_POST['email_subject'] ?? ''));
+        $email_body  = kses_post(unslash($_POST['email_body'] ?? ''));
+        $sms_body    = sanitize_textarea_field(unslash($_POST['sms_body'] ?? ''));
 
         if ($name === '') {
-            wp_safe_redirect(add_query_arg('error', rawurlencode(__('Name is required.', 'arm-repair-estimates')), wp_get_referer()));
+            safe_redirect(add_query_arg('error', rawurlencode(__('Name is required.', 'arm-repair-estimates')), get_referer()));
             exit;
         }
 
@@ -322,11 +322,11 @@ final class Reminders
         ];
 
         if ($id > 0) {
-            $wpdb->update($table, $data, ['id' => $id]);
+            $db->update($table, $data, ['id' => $id]);
         } else {
             $data['created_at'] = current_time('mysql');
-            $wpdb->insert($table, $data);
-            $id = (int) $wpdb->insert_id;
+            $db->insert($table, $data);
+            $id = (int) $db->insert_id;
         }
 
         $redirect = add_query_arg(
@@ -338,30 +338,30 @@ final class Reminders
             ],
             admin_url('admin.php')
         );
-        wp_safe_redirect($redirect);
+        safe_redirect($redirect);
         exit;
     }
 
     public static function handle_toggle(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have permission.', 'arm-repair-estimates'));
+            die(__('You do not have permission.', 'arm-repair-estimates'));
         }
 
         check_admin_referer('arm_re_reminder_toggle');
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_reminder_campaigns';
+        global $db;
+        $table = $db->prefix . 'arm_reminder_campaigns';
         $id    = isset($_POST['id']) ? (int) $_POST['id'] : 0;
         $state = sanitize_key($_POST['state'] ?? '');
 
         if ($id <= 0) {
-            wp_safe_redirect(add_query_arg('error', rawurlencode(__('Invalid campaign.', 'arm-repair-estimates')), wp_get_referer()));
+            safe_redirect(add_query_arg('error', rawurlencode(__('Invalid campaign.', 'arm-repair-estimates')), get_referer()));
             exit;
         }
 
         $status = $state === 'activate' ? 'active' : 'paused';
-        $wpdb->update(
+        $db->update(
             $table,
             [
                 'status'     => $status,
@@ -370,28 +370,28 @@ final class Reminders
             ['id' => $id]
         );
 
-        wp_safe_redirect(add_query_arg('message', rawurlencode(__('Status updated.', 'arm-repair-estimates')), wp_get_referer()));
+        safe_redirect(add_query_arg('message', rawurlencode(__('Status updated.', 'arm-repair-estimates')), get_referer()));
         exit;
     }
 
     public static function handle_delete(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have permission.', 'arm-repair-estimates'));
+            die(__('You do not have permission.', 'arm-repair-estimates'));
         }
 
         check_admin_referer('arm_re_reminder_delete');
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_reminder_campaigns';
+        global $db;
+        $table = $db->prefix . 'arm_reminder_campaigns';
         $id    = isset($_POST['id']) ? (int) $_POST['id'] : 0;
 
         if ($id <= 0) {
-            wp_safe_redirect(add_query_arg('error', rawurlencode(__('Invalid campaign.', 'arm-repair-estimates')), wp_get_referer()));
+            safe_redirect(add_query_arg('error', rawurlencode(__('Invalid campaign.', 'arm-repair-estimates')), get_referer()));
             exit;
         }
 
-        $wpdb->update(
+        $db->update(
             $table,
             [
                 'status'     => 'archived',
@@ -400,7 +400,7 @@ final class Reminders
             ['id' => $id]
         );
 
-        wp_safe_redirect(add_query_arg('message', rawurlencode(__('Campaign archived.', 'arm-repair-estimates')), admin_url('admin.php?page=arm-reminders')));
+        safe_redirect(add_query_arg('message', rawurlencode(__('Campaign archived.', 'arm-repair-estimates')), admin_url('admin.php?page=arm-reminders')));
         exit;
     }
 
@@ -411,7 +411,7 @@ final class Reminders
         }
 
         $value = is_array($value) ? reset($value) : $value;
-        $value = sanitize_text_field(wp_unslash($value));
+        $value = sanitize_text_field(unslash($value));
         $timestamp = strtotime($value);
         if ($timestamp === false) {
             return null;

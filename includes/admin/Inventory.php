@@ -34,7 +34,7 @@ final class Inventory
     public static function render_router(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(esc_html__('You do not have permission to view this page.', 'arm-repair-estimates'));
+            die(esc_html__('You do not have permission to view this page.', 'arm-repair-estimates'));
         }
 
         $action = isset($_GET['action']) ? sanitize_key($_GET['action']) : '';
@@ -48,12 +48,12 @@ final class Inventory
     /** List with search + pagination */
     private static function render_list(): void
     {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_inventory';
+        global $db;
+        $tbl = $db->prefix . 'arm_inventory';
 
         $cols = self::schema_map($tbl);
 
-        $search = isset($_GET['s']) ? wp_unslash((string) $_GET['s']) : '';
+        $search = isset($_GET['s']) ? unslash((string) $_GET['s']) : '';
         $page   = max(1, (int) ($_GET['paged'] ?? 1));
         $pp     = 20;
         $offset = ($page - 1) * $pp;
@@ -61,7 +61,7 @@ final class Inventory
         $where  = 'WHERE 1=1';
         $params = [];
         if ($search !== '') {
-            $like = '%' . $wpdb->esc_like($search) . '%';
+            $like = '%' . $db->esc_like($search) . '%';
             $by   = [];
             foreach (['name','sku','location','vendor','notes'] as $k) {
                 if (!empty($cols[$k])) { $by[] = "{$cols[$k]} LIKE %s"; $params[] = $like; }
@@ -70,7 +70,7 @@ final class Inventory
         }
 
         $count_sql = "SELECT COUNT(*) FROM $tbl $where";
-        $total = (int) $wpdb->get_var($params ? $wpdb->prepare($count_sql, ...$params) : $count_sql);
+        $total = (int) $db->get_var($params ? $db->prepare($count_sql, ...$params) : $count_sql);
 
         $fields = array_filter([
             $cols['id'] ?? 'id',
@@ -84,8 +84,8 @@ final class Inventory
         $select = implode(',', array_map(static fn($c) => "$c AS `$c`", $fields));
 
         $list_sql = "SELECT $select FROM $tbl $where ORDER BY " . ($cols['name'] ?? 'name') . " ASC LIMIT %d OFFSET %d";
-        $result   = $params ? $wpdb->get_results($wpdb->prepare($list_sql, ...array_merge($params, [$pp, $offset]))) :
-                              $wpdb->get_results($wpdb->prepare($list_sql, $pp, $offset));
+        $result   = $params ? $db->get_results($db->prepare($list_sql, ...array_merge($params, [$pp, $offset]))) :
+                              $db->get_results($db->prepare($list_sql, $pp, $offset));
 
         $alerts_url = admin_url('admin.php?page=arm-inventory-alerts');
         $add_url    = admin_url('admin.php?page=arm-inventory&action=add');
@@ -173,8 +173,8 @@ final class Inventory
     /** Add/Edit form */
     private static function render_form(): void
     {
-        global $wpdb;
-        $tbl  = $wpdb->prefix . 'arm_inventory';
+        global $db;
+        $tbl  = $db->prefix . 'arm_inventory';
         $cols = self::schema_map($tbl);
 
         $id   = isset($_GET['id']) ? max(0, (int) $_GET['id']) : 0;
@@ -182,7 +182,7 @@ final class Inventory
 
         $row = null;
         if ($is_edit) {
-            $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tbl WHERE " . ($cols['id'] ?? 'id') . "=%d", $id));
+            $row = $db->get_row($db->prepare("SELECT * FROM $tbl WHERE " . ($cols['id'] ?? 'id') . "=%d", $id));
             if (!$row) {
                 echo '<div class="wrap"><h1>' . esc_html__('Inventory', 'arm-repair-estimates') . '</h1>';
                 echo '<div class="notice notice-error"><p>' . esc_html__('Item not found.', 'arm-repair-estimates') . '</p></div></div>';
@@ -195,7 +195,7 @@ final class Inventory
         <div class="wrap">
           <h1><?php echo $is_edit ? esc_html__('Edit Item', 'arm-repair-estimates') : esc_html__('Add Item', 'arm-repair-estimates'); ?></h1>
           <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
-            <?php wp_nonce_field('arm_inventory_save', '_arm_inv_nonce'); ?>
+            <?php nonce_field('arm_inventory_save', '_arm_inv_nonce'); ?>
             <input type="hidden" name="action" value="arm_inventory_save" />
             <input type="hidden" name="id" value="<?php echo (int) $id; ?>" />
 
@@ -256,11 +256,11 @@ final class Inventory
     /** POST handler for create/update */
     public static function handle_save(): void
     {
-        if (!current_user_can('manage_options')) wp_die(esc_html__('Insufficient permissions.', 'arm-repair-estimates'));
+        if (!current_user_can('manage_options')) die(esc_html__('Insufficient permissions.', 'arm-repair-estimates'));
         check_admin_referer('arm_inventory_save', '_arm_inv_nonce');
 
-        global $wpdb;
-        $tbl  = $wpdb->prefix . 'arm_inventory';
+        global $db;
+        $tbl  = $db->prefix . 'arm_inventory';
         $cols = self::schema_map($tbl);
 
         $id   = isset($_POST['id']) ? max(0, (int) $_POST['id']) : 0;
@@ -271,7 +271,7 @@ final class Inventory
             'sku'       => sanitize_text_field($_POST['sku'] ?? ''),
             'vendor'    => sanitize_text_field($_POST['vendor'] ?? ''),
             'location'  => sanitize_text_field($_POST['location'] ?? ''),
-            'notes'     => wp_kses_post($_POST['notes'] ?? ''),
+            'notes'     => kses_post($_POST['notes'] ?? ''),
             'qty'       => (int) ($_POST['qty'] ?? 0),
             'threshold' => (int) ($_POST['threshold'] ?? 0),
             'cost'      => (float) ($_POST['cost'] ?? 0),
@@ -302,7 +302,7 @@ final class Inventory
 
         if ($id > 0) {
             
-            $wpdb->update(
+            $db->update(
                 $tbl,
                 $data,
                 [ $cols['id'] ?? 'id' => $id ],
@@ -311,34 +311,34 @@ final class Inventory
             );
         } else {
             
-            $wpdb->insert($tbl, $data, $types);
-            $id = (int) $wpdb->insert_id;
+            $db->insert($tbl, $data, $types);
+            $id = (int) $db->insert_id;
         }
 
         $dest = admin_url('admin.php?page=arm-inventory&updated=1');
         if ($id > 0) $dest = add_query_arg(['action' => 'edit', 'id' => $id, 'updated' => 1], admin_url('admin.php?page=arm-inventory'));
-        wp_safe_redirect($dest);
+        safe_redirect($dest);
         exit;
     }
 
     /** POST handler for delete */
     public static function handle_delete(): void
     {
-        if (!current_user_can('manage_options')) wp_die(esc_html__('Insufficient permissions.', 'arm-repair-estimates'));
+        if (!current_user_can('manage_options')) die(esc_html__('Insufficient permissions.', 'arm-repair-estimates'));
         check_admin_referer('arm_inventory_delete', '_arm_inv_del_nonce');
 
-        global $wpdb;
-        $tbl  = $wpdb->prefix . 'arm_inventory';
+        global $db;
+        $tbl  = $db->prefix . 'arm_inventory';
         $cols = self::schema_map($tbl);
 
         $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
         if ($id <= 0) {
-            wp_safe_redirect(admin_url('admin.php?page=arm-inventory&error=1'));
+            safe_redirect(admin_url('admin.php?page=arm-inventory&error=1'));
             exit;
         }
 
-        $wpdb->delete($tbl, [ $cols['id'] ?? 'id' => $id ], ['%d']);
-        wp_safe_redirect(admin_url('admin.php?page=arm-inventory&deleted=1'));
+        $db->delete($tbl, [ $cols['id'] ?? 'id' => $id ], ['%d']);
+        safe_redirect(admin_url('admin.php?page=arm-inventory&deleted=1'));
         exit;
     }
 
@@ -347,7 +347,7 @@ final class Inventory
     {
         ?>
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline" onsubmit="return confirm('<?php echo esc_js(__('Delete this item?', 'arm-repair-estimates')); ?>');">
-            <?php wp_nonce_field('arm_inventory_delete', '_arm_inv_del_nonce'); ?>
+            <?php nonce_field('arm_inventory_delete', '_arm_inv_del_nonce'); ?>
             <input type="hidden" name="action" value="arm_inventory_delete" />
             <input type="hidden" name="id" value="<?php echo (int) $id; ?>" />
             <button type="submit" class="button button-small button-link-delete"><?php echo esc_html__('Delete', 'arm-repair-estimates'); ?></button>
@@ -370,10 +370,10 @@ final class Inventory
      */
     private static function schema_map(string $table): array
     {
-        global $wpdb;
+        global $db;
 
-        $cols = $wpdb->get_col(
-            $wpdb->prepare(
+        $cols = $db->get_col(
+            $db->prepare(
                 "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s",
                 $table
             )

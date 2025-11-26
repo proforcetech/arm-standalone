@@ -8,13 +8,13 @@ final class Assets
     public static function boot(): void
     {
         add_action('admin_enqueue_scripts', [__CLASS__, 'register']);
-        add_action('wp_enqueue_scripts', [__CLASS__, 'register']);
+        add_action('enqueue_scripts', [__CLASS__, 'register']);
     }
 
     public static function register(): void
     {
-        if (!wp_style_is('arm-re-admin', 'registered')) {
-            wp_register_style(
+        if (!style_is('arm-re-admin', 'registered')) {
+            register_style(
                 'arm-re-admin',
                 ARM_RE_URL . 'assets/css/arm-frontend.css',
                 [],
@@ -22,7 +22,7 @@ final class Assets
             );
         }
 
-        wp_register_script(
+        register_script(
             'arm-tech-time',
             ARM_RE_URL . 'assets/js/arm-tech-time.js',
             ['jquery'],

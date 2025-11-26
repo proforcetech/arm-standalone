@@ -77,7 +77,7 @@ defined( 'ABSPATH' ) || exit;
 						<?php if ( $account->notes ) : ?>
 							<tr>
 								<th><?php esc_html_e( 'Notes', 'arm-repair-estimates' ); ?></th>
-								<td><?php echo wp_kses_post( nl2br( $account->notes ) ); ?></td>
+								<td><?php echo kses_post( nl2br( $account->notes ) ); ?></td>
 							</tr>
 						<?php endif; ?>
 					</table>
@@ -235,7 +235,7 @@ defined( 'ABSPATH' ) || exit;
 		<span class="arm-modal-close" onclick="closeModal('transaction-modal')">&times;</span>
 		<h2><?php esc_html_e( 'Add Transaction', 'arm-repair-estimates' ); ?></h2>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-			<?php wp_nonce_field( 'arm_save_credit_transaction' ); ?>
+			<?php nonce_field( 'arm_save_credit_transaction' ); ?>
 			<input type="hidden" name="action" value="arm_save_credit_transaction" />
 			<input type="hidden" name="account_id" value="<?php echo esc_attr( $account->id ); ?>" />
 
@@ -290,7 +290,7 @@ defined( 'ABSPATH' ) || exit;
 		<span class="arm-modal-close" onclick="closeModal('payment-modal')">&times;</span>
 		<h2><?php esc_html_e( 'Record Payment', 'arm-repair-estimates' ); ?></h2>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-			<?php wp_nonce_field( 'arm_save_credit_payment' ); ?>
+			<?php nonce_field( 'arm_save_credit_payment' ); ?>
 			<input type="hidden" name="action" value="arm_save_credit_payment" />
 			<input type="hidden" name="account_id" value="<?php echo esc_attr( $account->id ); ?>" />
 

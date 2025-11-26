@@ -1,9 +1,9 @@
 <?php
 namespace ARM\TimeLogs;
 
-use WP_Error;
-use WP_REST_Request;
-use WP_REST_Response;
+use Error;
+use REST_Request;
+use REST_Response;
 
 if (!defined('ABSPATH')) exit;
 
@@ -57,7 +57,7 @@ final class Rest
         return is_user_logged_in();
     }
 
-    public static function start_entry(WP_REST_Request $request)
+    public static function start_entry(REST_Request $request)
     {
         $job_id = (int) $request->get_param('job_id');
         $note   = trim((string) $request->get_param('note'));
@@ -72,14 +72,14 @@ final class Rest
         }
 
         $result = Controller::start_entry($job_id, $user_id, 'technician', $note, $location);
-        if ($result instanceof WP_Error) {
+        if ($result instanceof Error) {
             return self::error_response($result);
         }
 
-        return new WP_REST_Response($result, 200);
+        return new REST_Response($result, 200);
     }
 
-    public static function stop_entry(WP_REST_Request $request)
+    public static function stop_entry(REST_Request $request)
     {
         $entry_id = (int) $request->get_param('entry_id');
         $job_id   = (int) $request->get_param('job_id');
@@ -98,20 +98,20 @@ final class Rest
         } elseif ($job_id > 0) {
             $result = Controller::end_entry_by_job($job_id, $user_id, $location);
         } else {
-            return self::error_response(new WP_Error('arm_time_missing_params', __('Missing entry or job reference.', 'arm-repair-estimates'), ['status' => 400]));
+            return self::error_response(new Error('arm_time_missing_params', __('Missing entry or job reference.', 'arm-repair-estimates'), ['status' => 400]));
         }
 
-        if ($result instanceof WP_Error) {
+        if ($result instanceof Error) {
             return self::error_response($result);
         }
 
-        return new WP_REST_Response($result, 200);
+        return new REST_Response($result, 200);
     }
 
-    private static function error_response(WP_Error $error)
+    private static function error_response(Error $error)
     {
         $status = (int) ($error->get_error_data()['status'] ?? 400);
-        return new WP_REST_Response([
+        return new REST_Response([
             'code'    => $error->get_error_code(),
             'message' => $error->get_error_message(),
         ], $status ?: 400);

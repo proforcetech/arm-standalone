@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) exit;
 final class Activator {
 
     public static function activate() {
-        global $wpdb;
+        global $db;
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
@@ -142,7 +142,7 @@ final class Activator {
 
     private static function configFromEnvironment(): Config
     {
-        global $wpdb;
+        global $db;
 
         $env = $_ENV;
 
@@ -154,14 +154,14 @@ final class Activator {
         if (defined('DB_CHARSET')) { $env['DB_CHARSET'] = DB_CHARSET; }
         if (defined('DB_COLLATE')) { $env['DB_COLLATE'] = DB_COLLATE; }
 
-        if (isset($wpdb->prefix)) {
-            $env['DB_PREFIX'] = $wpdb->prefix;
+        if (isset($db->prefix)) {
+            $env['DB_PREFIX'] = $db->prefix;
         }
-        if (!empty($wpdb->charset)) {
-            $env['DB_CHARSET'] = $env['DB_CHARSET'] ?? $wpdb->charset;
+        if (!empty($db->charset)) {
+            $env['DB_CHARSET'] = $env['DB_CHARSET'] ?? $db->charset;
         }
-        if (!empty($wpdb->collate)) {
-            $env['DB_COLLATE'] = $env['DB_COLLATE'] ?? $wpdb->collate;
+        if (!empty($db->collate)) {
+            $env['DB_COLLATE'] = $env['DB_COLLATE'] ?? $db->collate;
         }
 
         return Config::fromEnv($env);

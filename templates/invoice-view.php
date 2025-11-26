@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) exit;
 
 $logo_url  = esc_url(get_option('arm_re_logo_url',''));
 $shop_name = esc_html(get_option('arm_re_shop_name',''));
-$shop_addr = wp_kses_post(get_option('arm_re_shop_address',''));
+$shop_addr = kses_post(get_option('arm_re_shop_address',''));
 $shop_phone= esc_html(get_option('arm_re_shop_phone',''));
 $shop_email= esc_html(get_option('arm_re_shop_email',''));
 
@@ -101,7 +101,7 @@ $currency          = strtoupper(get_option('arm_re_currency','usd'));
     <div>
       <?php if (!empty($inv->notes)): ?>
         <h3 style="margin:.2em 0;"><?php _e('Notes','arm-repair-estimates'); ?></h3>
-        <div><?php echo wpautop(wp_kses_post($inv->notes)); ?></div>
+        <div><?php echo wpautop(kses_post($inv->notes)); ?></div>
       <?php endif; ?>
     </div>
     <table style="width:100%;">

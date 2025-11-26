@@ -19,8 +19,8 @@ class Controller {
 		add_action( 'admin_post_arm_save_credit_account', array( __CLASS__, 'handle_save_account' ) );
 		add_action( 'admin_post_arm_save_credit_transaction', array( __CLASS__, 'handle_save_transaction' ) );
 		add_action( 'admin_post_arm_save_credit_payment', array( __CLASS__, 'handle_save_payment' ) );
-		add_action( 'wp_ajax_arm_get_credit_account', array( __CLASS__, 'ajax_get_account' ) );
-		add_action( 'wp_ajax_arm_get_credit_transactions', array( __CLASS__, 'ajax_get_transactions' ) );
+		add_action( 'ajax_arm_get_credit_account', array( __CLASS__, 'ajax_get_account' ) );
+		add_action( 'ajax_arm_get_credit_transactions', array( __CLASS__, 'ajax_get_transactions' ) );
 	}
 
 	/**
@@ -62,18 +62,18 @@ class Controller {
 	 * Render list of credit accounts.
 	 */
 	private static function render_list() {
-		global $wpdb;
+		global $db;
 
 		// Get all credit accounts with customer info
-		$accounts = $wpdb->get_results(
+		$accounts = $db->get_results(
 			"SELECT
 				ca.*,
 				c.first_name,
 				c.last_name,
 				c.email,
 				c.phone
-			FROM {$wpdb->prefix}arm_credit_accounts ca
-			LEFT JOIN {$wpdb->prefix}arm_customers c ON ca.customer_id = c.id
+			FROM {$db->prefix}arm_credit_accounts ca
+			LEFT JOIN {$db->prefix}arm_customers c ON ca.customer_id = c.id
 			ORDER BY ca.updated_at DESC"
 		);
 
@@ -86,22 +86,22 @@ class Controller {
 	 * @param int $id Account ID.
 	 */
 	private static function render_form( $id = 0 ) {
-		global $wpdb;
+		global $db;
 
 		$account = null;
 		if ( $id ) {
-			$account = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT * FROM {$wpdb->prefix}arm_credit_accounts WHERE id = %d",
+			$account = $db->get_row(
+				$db->prepare(
+					"SELECT * FROM {$db->prefix}arm_credit_accounts WHERE id = %d",
 					$id
 				)
 			);
 		}
 
 		// Get all customers for dropdown
-		$customers = $wpdb->get_results(
+		$customers = $db->get_results(
 			"SELECT id, first_name, last_name, email
-			FROM {$wpdb->prefix}arm_customers
+			FROM {$db->prefix}arm_customers
 			ORDER BY last_name, first_name"
 		);
 
@@ -114,26 +114,26 @@ class Controller {
 	 * @param int $id Account ID.
 	 */
 	private static function render_view( $id ) {
-		global $wpdb;
+		global $db;
 
-		$account = $wpdb->get_row(
-			$wpdb->prepare(
+		$account = $db->get_row(
+			$db->prepare(
 				"SELECT ca.*, c.first_name, c.last_name, c.email, c.phone, c.address, c.city, c.state, c.zip
-				FROM {$wpdb->prefix}arm_credit_accounts ca
-				LEFT JOIN {$wpdb->prefix}arm_customers c ON ca.customer_id = c.id
+				FROM {$db->prefix}arm_credit_accounts ca
+				LEFT JOIN {$db->prefix}arm_customers c ON ca.customer_id = c.id
 				WHERE ca.id = %d",
 				$id
 			)
 		);
 
 		if ( ! $account ) {
-			wp_die( __( 'Credit account not found.', 'arm-repair-estimates' ) );
+			die( __( 'Credit account not found.', 'arm-repair-estimates' ) );
 		}
 
 		// Get transactions
-		$transactions = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$wpdb->prefix}arm_credit_transactions
+		$transactions = $db->get_results(
+			$db->prepare(
+				"SELECT * FROM {$db->prefix}arm_credit_transactions
 				WHERE account_id = %d
 				ORDER BY transaction_date DESC, id DESC",
 				$id
@@ -141,9 +141,9 @@ class Controller {
 		);
 
 		// Get payments
-		$payments = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$wpdb->prefix}arm_credit_payments
+		$payments = $db->get_results(
+			$db->prepare(
+				"SELECT * FROM {$db->prefix}arm_credit_payments
 				WHERE account_id = %d
 				ORDER BY payment_date DESC, id DESC",
 				$id
@@ -151,9 +151,9 @@ class Controller {
 		);
 
 		// Get reminders
-		$reminders = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$wpdb->prefix}arm_credit_reminders
+		$reminders = $db->get_results(
+			$db->prepare(
+				"SELECT * FROM {$db->prefix}arm_credit_reminders
 				WHERE account_id = %d
 				ORDER BY sent_at DESC",
 				$id
@@ -170,10 +170,10 @@ class Controller {
 		check_admin_referer( 'arm_save_credit_account' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( __( 'Unauthorized', 'arm-repair-estimates' ) );
+			die( __( 'Unauthorized', 'arm-repair-estimates' ) );
 		}
 
-		global $wpdb;
+		global $db;
 
 		$id               = isset( $_POST['account_id'] ) ? intval( $_POST['account_id'] ) : 0;
 		$customer_id      = intval( $_POST['customer_id'] );
@@ -199,8 +199,8 @@ class Controller {
 
 		if ( $id ) {
 			// Update existing
-			$wpdb->update(
-				$wpdb->prefix . 'arm_credit_accounts',
+			$db->update(
+				$db->prefix . 'arm_credit_accounts',
 				$data,
 				array( 'id' => $id ),
 				array( '%d', '%f', '%f', '%f', '%s', '%s', '%d', '%s' ),
@@ -208,15 +208,15 @@ class Controller {
 			);
 		} else {
 			// Insert new
-			$wpdb->insert(
-				$wpdb->prefix . 'arm_credit_accounts',
+			$db->insert(
+				$db->prefix . 'arm_credit_accounts',
 				$data,
 				array( '%d', '%f', '%f', '%f', '%s', '%s', '%d', '%s' )
 			);
-			$id = $wpdb->insert_id;
+			$id = $db->insert_id;
 		}
 
-		wp_redirect(
+		redirect(
 			add_query_arg(
 				array(
 					'page'   => 'arm-credit-accounts',
@@ -237,10 +237,10 @@ class Controller {
 		check_admin_referer( 'arm_save_credit_transaction' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( __( 'Unauthorized', 'arm-repair-estimates' ) );
+			die( __( 'Unauthorized', 'arm-repair-estimates' ) );
 		}
 
-		global $wpdb;
+		global $db;
 
 		$account_id       = intval( $_POST['account_id'] );
 		$transaction_type = sanitize_text_field( $_POST['transaction_type'] );
@@ -250,15 +250,15 @@ class Controller {
 		$reference_id     = ! empty( $_POST['reference_id'] ) ? intval( $_POST['reference_id'] ) : null;
 
 		// Get account details
-		$account = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$wpdb->prefix}arm_credit_accounts WHERE id = %d",
+		$account = $db->get_row(
+			$db->prepare(
+				"SELECT * FROM {$db->prefix}arm_credit_accounts WHERE id = %d",
 				$account_id
 			)
 		);
 
 		if ( ! $account ) {
-			wp_die( __( 'Account not found.', 'arm-repair-estimates' ) );
+			die( __( 'Account not found.', 'arm-repair-estimates' ) );
 		}
 
 		// Calculate new balance
@@ -271,8 +271,8 @@ class Controller {
 		}
 
 		// Insert transaction
-		$wpdb->insert(
-			$wpdb->prefix . 'arm_credit_transactions',
+		$db->insert(
+			$db->prefix . 'arm_credit_transactions',
 			array(
 				'account_id'       => $account_id,
 				'customer_id'      => $account->customer_id,
@@ -289,8 +289,8 @@ class Controller {
 
 		// Update account balance
 		$available_credit = floatval( $account->credit_limit ) - $new_balance;
-		$wpdb->update(
-			$wpdb->prefix . 'arm_credit_accounts',
+		$db->update(
+			$db->prefix . 'arm_credit_accounts',
 			array(
 				'current_balance'  => $new_balance,
 				'available_credit' => $available_credit,
@@ -300,7 +300,7 @@ class Controller {
 			array( '%d' )
 		);
 
-		wp_redirect(
+		redirect(
 			add_query_arg(
 				array(
 					'page'   => 'arm-credit-accounts',
@@ -321,10 +321,10 @@ class Controller {
 		check_admin_referer( 'arm_save_credit_payment' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( __( 'Unauthorized', 'arm-repair-estimates' ) );
+			die( __( 'Unauthorized', 'arm-repair-estimates' ) );
 		}
 
-		global $wpdb;
+		global $db;
 
 		$account_id       = intval( $_POST['account_id'] );
 		$payment_method   = sanitize_text_field( $_POST['payment_method'] );
@@ -334,20 +334,20 @@ class Controller {
 		$notes            = sanitize_textarea_field( $_POST['notes'] );
 
 		// Get account details
-		$account = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$wpdb->prefix}arm_credit_accounts WHERE id = %d",
+		$account = $db->get_row(
+			$db->prepare(
+				"SELECT * FROM {$db->prefix}arm_credit_accounts WHERE id = %d",
 				$account_id
 			)
 		);
 
 		if ( ! $account ) {
-			wp_die( __( 'Account not found.', 'arm-repair-estimates' ) );
+			die( __( 'Account not found.', 'arm-repair-estimates' ) );
 		}
 
 		// Insert payment record
-		$wpdb->insert(
-			$wpdb->prefix . 'arm_credit_payments',
+		$db->insert(
+			$db->prefix . 'arm_credit_payments',
 			array(
 				'account_id'       => $account_id,
 				'customer_id'      => $account->customer_id,
@@ -366,8 +366,8 @@ class Controller {
 		$new_balance      = floatval( $account->current_balance ) - $amount;
 		$available_credit = floatval( $account->credit_limit ) - $new_balance;
 
-		$wpdb->insert(
-			$wpdb->prefix . 'arm_credit_transactions',
+		$db->insert(
+			$db->prefix . 'arm_credit_transactions',
 			array(
 				'account_id'       => $account_id,
 				'customer_id'      => $account->customer_id,
@@ -375,7 +375,7 @@ class Controller {
 				'amount'           => $amount,
 				'balance_after'    => $new_balance,
 				'reference_type'   => 'payment',
-				'reference_id'     => $wpdb->insert_id,
+				'reference_id'     => $db->insert_id,
 				'description'      => sprintf( 'Payment via %s - Ref: %s', $payment_method, $reference_number ),
 				'created_by'       => get_current_user_id(),
 			),
@@ -383,8 +383,8 @@ class Controller {
 		);
 
 		// Update account
-		$wpdb->update(
-			$wpdb->prefix . 'arm_credit_accounts',
+		$db->update(
+			$db->prefix . 'arm_credit_accounts',
 			array(
 				'current_balance'   => $new_balance,
 				'available_credit'  => $available_credit,
@@ -395,7 +395,7 @@ class Controller {
 			array( '%d' )
 		);
 
-		wp_redirect(
+		redirect(
 			add_query_arg(
 				array(
 					'page'   => 'arm-credit-accounts',
@@ -417,19 +417,19 @@ class Controller {
 
 		$account_id = intval( $_POST['account_id'] );
 
-		global $wpdb;
-		$account = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$wpdb->prefix}arm_credit_accounts WHERE id = %d",
+		global $db;
+		$account = $db->get_row(
+			$db->prepare(
+				"SELECT * FROM {$db->prefix}arm_credit_accounts WHERE id = %d",
 				$account_id
 			)
 		);
 
 		if ( ! $account ) {
-			wp_send_json_error( array( 'message' => __( 'Account not found.', 'arm-repair-estimates' ) ) );
+			send_json_error( array( 'message' => __( 'Account not found.', 'arm-repair-estimates' ) ) );
 		}
 
-		wp_send_json_success( $account );
+		send_json_success( $account );
 	}
 
 	/**
@@ -440,17 +440,17 @@ class Controller {
 
 		$account_id = intval( $_POST['account_id'] );
 
-		global $wpdb;
-		$transactions = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$wpdb->prefix}arm_credit_transactions
+		global $db;
+		$transactions = $db->get_results(
+			$db->prepare(
+				"SELECT * FROM {$db->prefix}arm_credit_transactions
 				WHERE account_id = %d
 				ORDER BY transaction_date DESC, id DESC",
 				$account_id
 			)
 		);
 
-		wp_send_json_success( $transactions );
+		send_json_success( $transactions );
 	}
 
 	/**
@@ -460,10 +460,10 @@ class Controller {
 	 * @return object|null
 	 */
 	public static function get_account_by_customer( $customer_id ) {
-		global $wpdb;
-		return $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$wpdb->prefix}arm_credit_accounts WHERE customer_id = %d",
+		global $db;
+		return $db->get_row(
+			$db->prepare(
+				"SELECT * FROM {$db->prefix}arm_credit_accounts WHERE customer_id = %d",
 				$customer_id
 			)
 		);
@@ -480,7 +480,7 @@ class Controller {
 	 * @return bool|int Transaction ID on success, false on failure.
 	 */
 	public static function create_charge( $customer_id, $amount, $description, $reference_type = null, $reference_id = null ) {
-		global $wpdb;
+		global $db;
 
 		$account = self::get_account_by_customer( $customer_id );
 		if ( ! $account || $account->status !== 'active' ) {
@@ -491,8 +491,8 @@ class Controller {
 		$available_credit = floatval( $account->credit_limit ) - $new_balance;
 
 		// Insert transaction
-		$wpdb->insert(
-			$wpdb->prefix . 'arm_credit_transactions',
+		$db->insert(
+			$db->prefix . 'arm_credit_transactions',
 			array(
 				'account_id'       => $account->id,
 				'customer_id'      => $customer_id,
@@ -508,8 +508,8 @@ class Controller {
 		);
 
 		// Update account
-		$wpdb->update(
-			$wpdb->prefix . 'arm_credit_accounts',
+		$db->update(
+			$db->prefix . 'arm_credit_accounts',
 			array(
 				'current_balance'  => $new_balance,
 				'available_credit' => $available_credit,
@@ -519,6 +519,6 @@ class Controller {
 			array( '%d' )
 		);
 
-		return $wpdb->insert_id;
+		return $db->insert_id;
 	}
 }

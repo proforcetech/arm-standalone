@@ -14,7 +14,7 @@ $is_edit = ! empty( $account );
 	<h1><?php echo $is_edit ? esc_html__( 'Edit Credit Account', 'arm-repair-estimates' ) : esc_html__( 'New Credit Account', 'arm-repair-estimates' ); ?></h1>
 
 	<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-		<?php wp_nonce_field( 'arm_save_credit_account' ); ?>
+		<?php nonce_field( 'arm_save_credit_account' ); ?>
 		<input type="hidden" name="action" value="arm_save_credit_account" />
 		<?php if ( $is_edit ) : ?>
 			<input type="hidden" name="account_id" value="<?php echo esc_attr( $account->id ); ?>" />
@@ -28,7 +28,7 @@ $is_edit = ! empty( $account );
 				<td>
 					<?php if ( $is_edit ) : ?>
 						<?php
-						$customer = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}arm_customers WHERE id = %d", $account->customer_id ) );
+						$customer = $db->get_row( $db->prepare( "SELECT * FROM {$db->prefix}arm_customers WHERE id = %d", $account->customer_id ) );
 						?>
 						<strong><?php echo esc_html( $customer->first_name . ' ' . $customer->last_name . ' (' . $customer->email . ')' ); ?></strong>
 						<input type="hidden" name="customer_id" value="<?php echo esc_attr( $account->customer_id ); ?>" />

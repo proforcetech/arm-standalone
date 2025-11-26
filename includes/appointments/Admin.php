@@ -12,8 +12,8 @@ final class Admin
     {
         add_action('admin_menu', [__CLASS__, 'register_page']);
         add_action('admin_enqueue_scripts', [__CLASS__, 'enqueue_assets']);
-        add_action('wp_ajax_arm_admin_events', [__CLASS__, 'ajax_events']);
-        add_action('wp_ajax_arm_save_event', [__CLASS__, 'ajax_save_event']);
+        add_action('ajax_arm_admin_events', [__CLASS__, 'ajax_events']);
+        add_action('ajax_arm_save_event', [__CLASS__, 'ajax_save_event']);
     }
 
     public static function register_page(): void
@@ -33,17 +33,17 @@ final class Admin
         if (strpos($hook, 'arm-appointments') === false) return;
 
         
-        wp_enqueue_script('fullcalendar-js', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js', [], null, true);
-        wp_enqueue_script(
+        enqueue_script('fullcalendar-js', 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js', [], null, true);
+        enqueue_script(
             'arm-appointments-admin',
             ARM_RE_URL . 'assets/js/arm-appointments-admin.js',
             ['jquery', 'fullcalendar-js'],
             ARM_RE_VERSION,
             true
         );
-        wp_localize_script('arm-appointments-admin', 'ARM_APPT', [
+        localize_script('arm-appointments-admin', 'ARM_APPT', [
             'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce'    => wp_create_nonce('arm_appt_nonce'),
+            'nonce'    => create_nonce('arm_appt_nonce'),
         ]);
     }
 
@@ -61,9 +61,9 @@ final class Admin
     public static function ajax_events(): void
     {
         check_ajax_referer('arm_appt_nonce', 'nonce');
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_appointments';
-        $rows = $wpdb->get_results("SELECT id, start_datetime, end_datetime, status FROM $tbl");
+        global $db;
+        $tbl = $db->prefix . 'arm_appointments';
+        $rows = $db->get_results("SELECT id, start_datetime, end_datetime, status FROM $tbl");
 
         $events = [];
         foreach ($rows as $row) {
@@ -83,7 +83,7 @@ final class Admin
             ];
         }
 
-        wp_send_json($events);
+        send_json($events);
     }
 
     public static function ajax_save_event(): void
@@ -97,6 +97,6 @@ final class Admin
             Controller::update_times($id, $start, $end);
         }
 
-        wp_send_json_success();
+        send_json_success();
     }
 }

@@ -13,9 +13,9 @@ class Reports
 
     public static function create(array $template, array $submission, array $responses): int
     {
-        global $wpdb;
-        $reports   = $wpdb->prefix . 'arm_inspections';
-        $responses_table = $wpdb->prefix . 'arm_inspection_responses';
+        global $db;
+        $reports   = $db->prefix . 'arm_inspections';
+        $responses_table = $db->prefix . 'arm_inspection_responses';
         $now = current_time('mysql');
 
         $score_total = 0;
@@ -45,7 +45,7 @@ class Reports
             $result = 'fail';
         }
 
-        $token = wp_generate_password(32, false, false);
+        $token = generate_password(32, false, false);
 
         $data = [
             'template_id'    => (int) $template['id'],
@@ -58,7 +58,7 @@ class Reports
             'customer_name'  => sanitize_text_field($submission['customer_name'] ?? ''),
             'customer_email' => sanitize_email($submission['customer_email'] ?? ''),
             'customer_phone' => sanitize_text_field($submission['customer_phone'] ?? ''),
-            'summary'        => wp_kses_post($submission['summary'] ?? ''),
+            'summary'        => kses_post($submission['summary'] ?? ''),
             'score_total'    => $score_total,
             'score_max'      => $score_max,
             'result'         => $result,
@@ -69,11 +69,11 @@ class Reports
         ];
 
         $formats = ['%d','%d','%d','%d','%d','%s','%s','%s','%s','%s','%s','%f','%f','%s','%s','%s','%s'];
-        $wpdb->insert($reports, $data, $formats);
-        $inspection_id = (int) $wpdb->insert_id;
+        $db->insert($reports, $data, $formats);
+        $inspection_id = (int) $db->insert_id;
 
         foreach ($responses as $response) {
-            $wpdb->insert($responses_table, [
+            $db->insert($responses_table, [
                 'inspection_id' => $inspection_id,
                 'item_id'       => (int) $response['item_id'],
                 'value_text'    => $response['value_text'],
@@ -90,14 +90,14 @@ class Reports
 
     public static function get_with_details(int $id): ?array
     {
-        global $wpdb;
-        $reports   = $wpdb->prefix . 'arm_inspections';
-        $templates = $wpdb->prefix . 'arm_inspection_templates';
-        $items     = $wpdb->prefix . 'arm_inspection_template_items';
-        $responses = $wpdb->prefix . 'arm_inspection_responses';
+        global $db;
+        $reports   = $db->prefix . 'arm_inspections';
+        $templates = $db->prefix . 'arm_inspection_templates';
+        $items     = $db->prefix . 'arm_inspection_template_items';
+        $responses = $db->prefix . 'arm_inspection_responses';
 
-        $inspection = $wpdb->get_row(
-            $wpdb->prepare(
+        $inspection = $db->get_row(
+            $db->prepare(
                 "SELECT r.*, t.name AS template_name, t.description AS template_description
                  FROM $reports r
                  INNER JOIN $templates t ON t.id = r.template_id
@@ -111,8 +111,8 @@ class Reports
             return null;
         }
 
-        $items_data = $wpdb->get_results(
-            $wpdb->prepare(
+        $items_data = $db->get_results(
+            $db->prepare(
                 "SELECT i.*, resp.value_text, resp.numeric_value, resp.score_value, resp.note
                  FROM $responses resp
                  INNER JOIN $items i ON i.id = resp.item_id
@@ -130,9 +130,9 @@ class Reports
 
     public static function get_by_token(string $token): ?array
     {
-        global $wpdb;
-        $reports = $wpdb->prefix . 'arm_inspections';
-        $id = $wpdb->get_var($wpdb->prepare("SELECT id FROM $reports WHERE share_token = %s", $token));
+        global $db;
+        $reports = $db->prefix . 'arm_inspections';
+        $id = $db->get_var($db->prepare("SELECT id FROM $reports WHERE share_token = %s", $token));
         if (!$id) {
             return null;
         }
@@ -180,7 +180,7 @@ class Reports
             <?php if (!empty($inspection['summary'])): ?>
                 <div style="margin-bottom:16px; font-size:13px;">
                     <strong><?php esc_html_e('Summary Notes', 'arm-repair-estimates'); ?>:</strong>
-                    <div><?php echo wpautop(wp_kses_post($inspection['summary'])); ?></div>
+                    <div><?php echo wpautop(kses_post($inspection['summary'])); ?></div>
                 </div>
             <?php endif; ?>
 
@@ -205,7 +205,7 @@ class Reports
                             <strong><?php echo esc_html($row['label']); ?></strong>
                             <?php if (!empty($row['description'])): ?>
                                 <div style="color:#555; font-size:12px;">
-                                    <?php echo wp_kses_post($row['description']); ?>
+                                    <?php echo kses_post($row['description']); ?>
                                 </div>
                             <?php endif; ?>
                         </td>
@@ -222,7 +222,7 @@ class Reports
                             ?>
                         </td>
                         <td style="border-bottom:1px solid #eee; padding:6px;">
-                            <?php echo wpautop(wp_kses_post($row['note'] ?? '')); ?>
+                            <?php echo wpautop(kses_post($row['note'] ?? '')); ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -244,14 +244,14 @@ class Reports
 
     public static function handle_submission(): void
     {
-        if (!isset($_POST['_wpnonce']) || !wp_verify_nonce($_POST['_wpnonce'], 'arm_re_submit_inspection')) {
-            wp_die(__('Security check failed', 'arm-repair-estimates'));
+        if (!isset($_POST['_wpnonce']) || !verify_nonce($_POST['_wpnonce'], 'arm_re_submit_inspection')) {
+            die(__('Security check failed', 'arm-repair-estimates'));
         }
 
         $template_id = isset($_POST['template_id']) ? (int) $_POST['template_id'] : 0;
         $template = $template_id ? Templates::find($template_id) : null;
         if (!$template) {
-            wp_die(__('Invalid inspection template', 'arm-repair-estimates'));
+            die(__('Invalid inspection template', 'arm-repair-estimates'));
         }
 
         $submission = [
@@ -260,7 +260,7 @@ class Reports
             'customer_name'   => sanitize_text_field($_POST['customer_name'] ?? ''),
             'customer_email'  => sanitize_email($_POST['customer_email'] ?? ''),
             'customer_phone'  => sanitize_text_field($_POST['customer_phone'] ?? ''),
-            'summary'         => wp_kses_post($_POST['summary'] ?? ''),
+            'summary'         => kses_post($_POST['summary'] ?? ''),
         ];
 
         $responses = self::build_responses_from_request($template['items']);
@@ -269,13 +269,13 @@ class Reports
         self::maybe_email_customer($inspection_id);
 
         $inspection = self::get_with_details($inspection_id);
-        $redirect = wp_get_referer() ?: home_url();
+        $redirect = get_referer() ?: home_url();
         $redirect = add_query_arg([
             'inspection_submitted' => 1,
             'inspection_id'        => $inspection_id,
             'inspection_token'     => $inspection['share_token'] ?? '',
         ], $redirect);
-        wp_safe_redirect($redirect);
+        safe_redirect($redirect);
         exit;
     }
 
@@ -287,7 +287,7 @@ class Reports
             $field    = 'item_' . $item_id;
             $notes_key= 'item_' . $item_id . '_note';
             $value    = $_POST[$field] ?? null;
-            $note     = isset($_POST[$notes_key]) ? wp_kses_post($_POST[$notes_key]) : '';
+            $note     = isset($_POST[$notes_key]) ? kses_post($_POST[$notes_key]) : '';
 
             $response = [
                 'item_id'       => $item_id,
@@ -356,6 +356,6 @@ class Reports
             esc_url($link)
         );
 
-        wp_mail($inspection['customer_email'], $subject, $message);
+        mail($inspection['customer_email'], $subject, $message);
     }
 }

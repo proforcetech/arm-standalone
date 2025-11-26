@@ -11,12 +11,12 @@ class PublicView {
     public static function maybe_render() {
         $token = get_query_var('arm_invoice');
         if (!$token) return;
-        global $wpdb;
-        $invT=$wpdb->prefix.'arm_invoices'; $itT=$wpdb->prefix.'arm_invoice_items'; $cT=$wpdb->prefix.'arm_customers';
-        $inv = $wpdb->get_row($wpdb->prepare("SELECT * FROM $invT WHERE token=%s", $token));
-        if (!$inv) { status_header(404); wp_die('Invoice not found'); }
-        $items = $wpdb->get_results($wpdb->prepare("SELECT * FROM $itT WHERE invoice_id=%d ORDER BY sort_order ASC, id ASC", $inv->id));
-        $cust  = $wpdb->get_row($wpdb->prepare("SELECT * FROM $cT WHERE id=%d", $inv->customer_id));
+        global $db;
+        $invT=$db->prefix.'arm_invoices'; $itT=$db->prefix.'arm_invoice_items'; $cT=$db->prefix.'arm_customers';
+        $inv = $db->get_row($db->prepare("SELECT * FROM $invT WHERE token=%s", $token));
+        if (!$inv) { status_header(404); die('Invoice not found'); }
+        $items = $db->get_results($db->prepare("SELECT * FROM $itT WHERE invoice_id=%d ORDER BY sort_order ASC, id ASC", $inv->id));
+        $cust  = $db->get_row($db->prepare("SELECT * FROM $cT WHERE id=%d", $inv->customer_id));
 
         get_header();
         echo '<div class="arm-invoice-view">';

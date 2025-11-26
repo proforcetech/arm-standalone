@@ -62,7 +62,7 @@ final class Settings_Integrations {
 
     public static function render(): void {
         if (!current_user_can('manage_options')) {
-            wp_die(esc_html__('You do not have permission to view this page.','arm-repair-estimates'));
+            die(esc_html__('You do not have permission to view this page.','arm-repair-estimates'));
         }
         $k = self::opt_keys();
         ?>

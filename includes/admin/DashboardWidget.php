@@ -11,12 +11,12 @@ final class DashboardWidget
 {
     public static function boot(): void
     {
-        add_action('wp_dashboard_setup', [__CLASS__, 'register']);
+        add_action('dashboard_setup', [__CLASS__, 'register']);
     }
 
     public static function register(): void
     {
-        wp_add_dashboard_widget(
+        add_dashboard_widget(
             'arm_low_stock_widget',
             __('Low Stock Alerts', 'arm-repair-estimates'),
             [__CLASS__, 'render']
@@ -25,8 +25,8 @@ final class DashboardWidget
 
     public static function render(): void
     {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_inventory';
+        global $db;
+        $tbl = $db->prefix . 'arm_inventory';
 
         
         $col_qty   = self::first_existing_column($tbl, ['qty_on_hand', 'quantity', 'stock_qty']);
@@ -37,7 +37,7 @@ final class DashboardWidget
             return;
         }
 
-        $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $tbl WHERE $col_qty <= $col_low");
+        $count = (int) $db->get_var("SELECT COUNT(*) FROM $tbl WHERE $col_qty <= $col_low");
 
         if ($count <= 0) {
             echo '<p>' . esc_html__('All parts are above threshold.', 'arm-repair-estimates') . '</p>';
@@ -58,9 +58,9 @@ final class DashboardWidget
     /** Find the first existing column from a list. */
     private static function first_existing_column(string $table, array $candidates): ?string
     {
-        global $wpdb;
-        $schema = $wpdb->get_col(
-            $wpdb->prepare(
+        global $db;
+        $schema = $db->get_col(
+            $db->prepare(
                 "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s",
                 $table
             )

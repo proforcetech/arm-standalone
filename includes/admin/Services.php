@@ -7,9 +7,9 @@ class Services {
 
     public static function render() {
         if (!current_user_can('manage_options')) return;
-        global $wpdb; $tbl = $wpdb->prefix.'arm_service_types';
+        global $db; $tbl = $db->prefix.'arm_service_types';
 
-        if (!empty($_POST['arm_services_nonce']) && wp_verify_nonce($_POST['arm_services_nonce'],'arm_services_save')) {
+        if (!empty($_POST['arm_services_nonce']) && verify_nonce($_POST['arm_services_nonce'],'arm_services_save')) {
             $id = (int)($_POST['id'] ?? 0);
             $data = [
                 'name'=>sanitize_text_field($_POST['name']),
@@ -17,21 +17,21 @@ class Services {
                 'sort_order'=>(int)($_POST['sort_order'] ?? 0),
                 'updated_at'=>current_time('mysql')
             ];
-            if ($id) { $wpdb->update($tbl,$data,['id'=>$id]); echo '<div class="updated"><p>Updated.</p></div>'; }
-            else { $data['created_at']=current_time('mysql'); $wpdb->insert($tbl,$data); echo '<div class="updated"><p>Added.</p></div>'; }
+            if ($id) { $db->update($tbl,$data,['id'=>$id]); echo '<div class="updated"><p>Updated.</p></div>'; }
+            else { $data['created_at']=current_time('mysql'); $db->insert($tbl,$data); echo '<div class="updated"><p>Added.</p></div>'; }
         }
-        if (!empty($_GET['del']) && !empty($_GET['_wpnonce']) && wp_verify_nonce($_GET['_wpnonce'],'arm_services_del')) {
-            $wpdb->delete($tbl, ['id'=>(int)$_GET['del']]); echo '<div class="updated"><p>Deleted.</p></div>';
+        if (!empty($_GET['del']) && !empty($_GET['_wpnonce']) && verify_nonce($_GET['_wpnonce'],'arm_services_del')) {
+            $db->delete($tbl, ['id'=>(int)$_GET['del']]); echo '<div class="updated"><p>Deleted.</p></div>';
         }
 
-        $edit = null; if (!empty($_GET['edit'])) $edit = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tbl WHERE id=%d",(int)$_GET['edit']));
-        $rows = $wpdb->get_results("SELECT * FROM $tbl ORDER BY sort_order ASC, name ASC");
+        $edit = null; if (!empty($_GET['edit'])) $edit = $db->get_row($db->prepare("SELECT * FROM $tbl WHERE id=%d",(int)$_GET['edit']));
+        $rows = $db->get_results("SELECT * FROM $tbl ORDER BY sort_order ASC, name ASC");
         ?>
         <div class="wrap">
           <h1><?php _e('Service Types','arm-repair-estimates'); ?></h1>
           <h2><?php echo $edit ? __('Edit Service Type') : __('Add Service Type'); ?></h2>
           <form method="post">
-            <?php wp_nonce_field('arm_services_save','arm_services_nonce'); ?>
+            <?php nonce_field('arm_services_save','arm_services_nonce'); ?>
             <input type="hidden" name="id" value="<?php echo esc_attr($edit->id ?? 0); ?>">
             <table class="form-table">
               <tr><th><?php _e('Name'); ?></th><td><input type="text" name="name" required value="<?php echo esc_attr($edit->name ?? ''); ?>"></td></tr>
@@ -46,7 +46,7 @@ class Services {
             <thead><tr><th>ID</th><th><?php _e('Name'); ?></th><th><?php _e('Active'); ?></th><th><?php _e('Sort'); ?></th><th><?php _e('Actions'); ?></th></tr></thead>
             <tbody>
             <?php if ($rows): foreach ($rows as $r):
-                $del = wp_nonce_url(add_query_arg(['del'=>$r->id]), 'arm_services_del');
+                $del = nonce_url(add_query_arg(['del'=>$r->id]), 'arm_services_del');
                 $edit_url = add_query_arg(['edit'=>$r->id]);
             ?>
               <tr>

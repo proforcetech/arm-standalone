@@ -26,11 +26,11 @@ final class Activator
     /** Daily cleanup cron target. */
     public static function cleanup(): void
     {
-        global $wpdb;
+        global $db;
         
-        $wpdb->query(
-            $wpdb->prepare(
-                "DELETE FROM {$wpdb->prefix}arm_estimate_submissions WHERE created_at < (NOW() - INTERVAL %d DAY)",
+        $db->query(
+            $db->prepare(
+                "DELETE FROM {$db->prefix}arm_estimate_submissions WHERE created_at < (NOW() - INTERVAL %d DAY)",
                 180
             )
         );
@@ -40,31 +40,31 @@ final class Activator
 
     private static function check_requirements_or_die(): void
     {
-        global $wp_version;
+        global $version;
         $req_php = '8.0';   
         $req_wp  = '6.0';
 
         if (version_compare(PHP_VERSION, $req_php, '<')) {
             deactivate_plugins(plugin_basename(defined('ARM_RE_FILE') ? ARM_RE_FILE : __FILE__));
-            wp_die(
+            die(
                 esc_html(sprintf('ARM Repair Estimates requires PHP %s or newer. You have %s.', $req_php, PHP_VERSION))
             );
         }
-        if (version_compare($wp_version, $req_wp, '<')) {
+        if (version_compare($version, $req_wp, '<')) {
             deactivate_plugins(plugin_basename(defined('ARM_RE_FILE') ? ARM_RE_FILE : __FILE__));
-            wp_die(
-                esc_html(sprintf('ARM Repair Estimates requires WordPress %s or newer. You have %s.', $req_wp, $wp_version))
+            die(
+                esc_html(sprintf('ARM Repair Estimates requires WordPress %s or newer. You have %s.', $req_wp, $version))
             );
         }
     }
 
     private static function create_tables(): void
     {
-        global $wpdb;
+        global $db;
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-        $p       = $wpdb->prefix;
-        $charset = $wpdb->get_charset_collate();
+        $p       = $db->prefix;
+        $charset = $db->get_charset_collate();
 
         $sql = [];
 
@@ -237,9 +237,9 @@ final class Activator
 
     private static function seed_service_types(): void
     {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_service_types';
-        $count = (int) $wpdb->get_var("SELECT COUNT(*) FROM $tbl");
+        global $db;
+        $tbl = $db->prefix . 'arm_service_types';
+        $count = (int) $db->get_var("SELECT COUNT(*) FROM $tbl");
         if ($count > 0) return;
 
         $rows = [
@@ -250,7 +250,7 @@ final class Activator
             ['AC / Heating',1, 50],
         ];
         foreach ($rows as [$name, $active, $sort]) {
-            $wpdb->insert($tbl, ['name' => $name, 'is_active' => $active, 'sort_order' => $sort], ['%s','%d','%d']);
+            $db->insert($tbl, ['name' => $name, 'is_active' => $active, 'sort_order' => $sort], ['%s','%d','%d']);
         }
     }
 
@@ -258,24 +258,24 @@ final class Activator
     {
         
         if (!get_option('arm_re_page_estimate_form')) {
-            $pid = wp_insert_post([
+            $pid = insert_post([
                 'post_title'   => 'Request a Repair Estimate',
                 'post_status'  => 'publish',
                 'post_type'    => 'page',
                 'post_content' => '[arm_repair_estimate_form]',
             ], true);
-            if (!is_wp_error($pid)) add_option('arm_re_page_estimate_form', (int) $pid);
+            if (!is_error($pid)) add_option('arm_re_page_estimate_form', (int) $pid);
         }
 
         
         if (!get_option('arm_re_page_customer_dashboard')) {
-            $pid = wp_insert_post([
+            $pid = insert_post([
                 'post_title'   => 'My Vehicle Service',
                 'post_status'  => 'publish',
                 'post_type'    => 'page',
                 'post_content' => '[arm_customer_dashboard]',
             ], true);
-            if (!is_wp_error($pid)) add_option('arm_re_page_customer_dashboard', (int) $pid);
+            if (!is_error($pid)) add_option('arm_re_page_customer_dashboard', (int) $pid);
         }
     }
 
@@ -301,11 +301,11 @@ final class Activator
 
     private static function schedule_cron(): void
     {
-        if (!wp_next_scheduled('arm_re_cleanup')) {
-            wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'arm_re_cleanup');
+        if (!next_scheduled('arm_re_cleanup')) {
+            schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'arm_re_cleanup');
         }
-        if (!wp_next_scheduled('arm_re_send_reminders')) {
-            wp_schedule_event(time() + (5 * MINUTE_IN_SECONDS), 'hourly', 'arm_re_send_reminders');
+        if (!next_scheduled('arm_re_send_reminders')) {
+            schedule_event(time() + (5 * MINUTE_IN_SECONDS), 'hourly', 'arm_re_send_reminders');
         }
     }
 }

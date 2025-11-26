@@ -296,7 +296,7 @@ final class AuthService
         if (defined('DB_CHARSET')) { $env['DB_CHARSET'] = DB_CHARSET; }
         if (defined('DB_COLLATE')) { $env['DB_COLLATE'] = DB_COLLATE; }
 
-        $env['DB_PREFIX'] = $env['DB_PREFIX'] ?? ($_ENV['DB_PREFIX'] ?? 'wp_');
+        $env['DB_PREFIX'] = $env['DB_PREFIX'] ?? ($_ENV['DB_PREFIX'] ?? '');
 
         return Config::fromEnv($env);
     }

@@ -31,11 +31,11 @@ final class PayPalController
     }
 
     /** Create a PayPal order; returns {id} */
-    public static function rest_order(\WP_REST_Request $req): \WP_REST_Response
+    public static function rest_order(\REST_Request $req): \REST_Response
     {
         $invoice_id = (int) $req->get_param('invoice_id');
         if ($invoice_id <= 0) {
-            return new \WP_REST_Response(['error' => 'invoice_id required'], 400);
+            return new \REST_Response(['error' => 'invoice_id required'], 400);
         }
 
         $resp = PayPalService::create_order($invoice_id);
@@ -49,17 +49,17 @@ final class PayPalController
             } elseif ($code === 'not_configured') {
                 $status = 500;
             }
-            return new \WP_REST_Response($resp, $status);
+            return new \REST_Response($resp, $status);
         }
-        return new \WP_REST_Response($resp, 200);
+        return new \REST_Response($resp, 200);
     }
 
     /** Capture an order and mark invoice paid */
-    public static function rest_capture(\WP_REST_Request $req): \WP_REST_Response
+    public static function rest_capture(\REST_Request $req): \REST_Response
     {
         $order_id = sanitize_text_field((string) $req->get_param('order_id'));
         if ($order_id === '') {
-            return new \WP_REST_Response(['error' => 'order_id required'], 400);
+            return new \REST_Response(['error' => 'order_id required'], 400);
         }
 
         $resp = PayPalService::capture_order($order_id);
@@ -71,13 +71,13 @@ final class PayPalController
             } elseif ($code === 'not_configured') {
                 $status = 500;
             }
-            return new \WP_REST_Response($resp, $status);
+            return new \REST_Response($resp, $status);
         }
-        return new \WP_REST_Response($resp, 200);
+        return new \REST_Response($resp, 200);
     }
 
     /** PayPal webhook */
-    public static function rest_webhook(\WP_REST_Request $req): \WP_REST_Response
+    public static function rest_webhook(\REST_Request $req): \REST_Response
     {
         $payload = $req->get_body();
         $headers = [];
@@ -99,7 +99,7 @@ final class PayPalController
         }
         $result = PayPalService::handle_webhook($payload, $headers);
         $status = empty($result['error']) ? 200 : (in_array($result['code'] ?? '', ['not_configured','webhook_not_configured'], true) ? 500 : 400);
-        return new \WP_REST_Response($result, $status);
+        return new \REST_Response($result, $status);
     }
 
     /** Helpers */

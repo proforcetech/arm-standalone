@@ -13,7 +13,7 @@ th,td{border-bottom:1px solid #ddd;padding:6px;text-align:left}
 $logo = get_option('arm_re_logo_url','');
 $shop = [
   'name'=> get_option('arm_re_shop_name',''),
-  'addr'=> wp_kses_post(get_option('arm_re_shop_address','')),
+  'addr'=> kses_post(get_option('arm_re_shop_address','')),
   'phone'=> get_option('arm_re_shop_phone',''),
   'email'=> get_option('arm_re_shop_email',''),
 ];
@@ -73,7 +73,7 @@ if (!empty($jobs) && (is_array($jobs) || $jobs instanceof \Traversable)) {
   <td style="width:60%;">
     <?php if ($logo): ?><img src="<?php echo esc_url($logo); ?>" style="max-height:60px"><?php endif; ?>
     <div><strong><?php echo esc_html($shop['name']); ?></strong></div>
-    <div class="small"><?php echo wp_kses_post(nl2br($shop['addr'])); ?></div>
+    <div class="small"><?php echo kses_post(nl2br($shop['addr'])); ?></div>
     <div class="small"><?php echo esc_html($shop['phone']); ?> · <?php echo esc_html($shop['email']); ?></div>
   </td>
   <td style="text-align:right;"><h1 style="margin:0;">
@@ -120,6 +120,6 @@ Status: <?php echo esc_html($est->status); ?><?php if ($est->expires_at) echo ' 
 
 <div style="clear:both"></div>
 <?php if (!empty($est->notes)): ?>
-<p><strong>Notes:</strong><br><?php echo wp_kses_post($est->notes); ?></p>
+<p><strong>Notes:</strong><br><?php echo kses_post($est->notes); ?></p>
 <?php endif; ?>
 </body></html>

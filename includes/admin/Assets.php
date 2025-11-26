@@ -8,20 +8,20 @@ class Assets {
     }
     public static function enqueue($hook) {
         if (!self::should_enqueue_for($hook)) return;
-        global $wpdb;
+        global $db;
         $ajax_url = admin_url('admin-ajax.php');
         $vehicle_years = [];
-        if ($wpdb instanceof \wpdb) {
-            $table = $wpdb->prefix.'arm_vehicle_data';
-            $table_exists = $wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $wpdb->esc_like($table)));
+        if ($db instanceof \db) {
+            $table = $db->prefix.'arm_vehicle_data';
+            $table_exists = $db->get_var($db->prepare('SHOW TABLES LIKE %s', $db->esc_like($table)));
             if ($table_exists) {
-                $vehicle_years = $wpdb->get_col("SELECT DISTINCT year FROM $table ORDER BY year DESC");
+                $vehicle_years = $db->get_col("SELECT DISTINCT year FROM $table ORDER BY year DESC");
             }
         }
-        wp_enqueue_style('arm-re-admin', ARM_RE_URL.'assets/css/arm-frontend.css', [], ARM_RE_VERSION);
-        wp_enqueue_script('arm-admin', ARM_RE_URL.'assets/js/arm-admin.js', ['jquery'], ARM_RE_VERSION, true);
-        wp_localize_script('arm-admin', 'ARM_RE_EST', [
-            'nonce'      => wp_create_nonce('arm_re_est_admin'),
+        enqueue_style('arm-re-admin', ARM_RE_URL.'assets/css/arm-frontend.css', [], ARM_RE_VERSION);
+        enqueue_script('arm-admin', ARM_RE_URL.'assets/js/arm-admin.js', ['jquery'], ARM_RE_VERSION, true);
+        localize_script('arm-admin', 'ARM_RE_EST', [
+            'nonce'      => create_nonce('arm_re_est_admin'),
             'ajax_url'   => $ajax_url,
             'rest'       => [
                 'stripeCheckout' => rest_url('arm/v1/stripe/checkout'),
@@ -40,7 +40,7 @@ class Assets {
             ],
             'vehicle' => [
                 'ajax_url'  => $ajax_url,
-                'nonce'     => wp_create_nonce('arm_re_nonce'),
+                'nonce'     => create_nonce('arm_re_nonce'),
                 'initYears' => array_map('strval', $vehicle_years),
                 'selectorNewValue' => \ARM\Estimates\Controller::vehicle_selector_new_value(),
             ],

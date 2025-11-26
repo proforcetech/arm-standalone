@@ -8,22 +8,22 @@ final class Frontend
     public static function boot(): void
     {
         add_shortcode('arm_appointment_form', [__CLASS__, 'render_form']);
-        add_action('wp_enqueue_scripts', [__CLASS__, 'enqueue_assets']);
+        add_action('enqueue_scripts', [__CLASS__, 'enqueue_assets']);
     }
 
     public static function enqueue_assets(): void
     {
-        wp_enqueue_style('arm-appointments-frontend', ARM_RE_URL . 'assets/css/appointments-frontend.css', [], ARM_RE_VERSION);
-        wp_enqueue_script(
+        enqueue_style('arm-appointments-frontend', ARM_RE_URL . 'assets/css/appointments-frontend.css', [], ARM_RE_VERSION);
+        enqueue_script(
             'arm-appointments-frontend',
             ARM_RE_URL . 'assets/js/appointments-frontend.js',
             ['jquery'],
             ARM_RE_VERSION,
             true
         );
-        wp_localize_script('arm-appointments-frontend', 'ARM_APPT', [
+        localize_script('arm-appointments-frontend', 'ARM_APPT', [
             'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce'    => wp_create_nonce('arm_re_nonce'),
+            'nonce'    => create_nonce('arm_re_nonce'),
             'msgs'     => [
                 'choose_slot' => __('Please select a time slot.', 'arm-repair-estimates'),
                 'booked'      => __('Your appointment has been booked!', 'arm-repair-estimates'),
@@ -67,9 +67,9 @@ final class Frontend
      */
     private static function render_estimate_selector(): string
     {
-        global $wpdb;
+        global $db;
 
-        $user = wp_get_current_user();
+        $user = get_current_user();
         $customer_id = self::get_customer_id_from_user($user->ID);
 
         if (!$customer_id) {
@@ -77,12 +77,12 @@ final class Frontend
         }
 
         // Get approved estimates that don't have appointments yet
-        $estimates = $wpdb->get_results(
-            $wpdb->prepare(
+        $estimates = $db->get_results(
+            $db->prepare(
                 "SELECT e.id, e.estimate_no, e.created_at, e.total,
                     CONCAT(e.vehicle_year, ' ', e.vehicle_make, ' ', e.vehicle_model) as vehicle
-                FROM {$wpdb->prefix}arm_estimates e
-                LEFT JOIN {$wpdb->prefix}arm_appointments a ON e.id = a.estimate_id
+                FROM {$db->prefix}arm_estimates e
+                LEFT JOIN {$db->prefix}arm_appointments a ON e.id = a.estimate_id
                 WHERE e.customer_id = %d
                 AND e.status = 'APPROVED'
                 AND a.id IS NULL
@@ -227,7 +227,7 @@ final class Frontend
                 </ul>
             </div>
             <div class="arm-guest-actions">
-                <a href="<?php echo esc_url(wp_login_url(get_permalink())); ?>" class="arm-btn arm-btn-secondary">
+                <a href="<?php echo esc_url(login_url(get_permalink())); ?>" class="arm-btn arm-btn-secondary">
                     <?php esc_html_e('Log In', 'arm-repair-estimates'); ?>
                 </a>
                 <a href="mailto:<?php echo esc_attr($contact_email); ?>" class="arm-btn arm-btn-primary">
@@ -316,10 +316,10 @@ final class Frontend
      */
     private static function get_customer_id_from_user($user_id): ?int
     {
-        global $wpdb;
-        $customer = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT id FROM {$wpdb->prefix}arm_customers WHERE email = (SELECT user_email FROM {$wpdb->users} WHERE ID = %d)",
+        global $db;
+        $customer = $db->get_row(
+            $db->prepare(
+                "SELECT id FROM {$db->prefix}arm_customers WHERE email = (SELECT user_email FROM {$db->users} WHERE ID = %d)",
                 $user_id
             )
         );

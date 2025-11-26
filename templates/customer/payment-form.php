@@ -23,7 +23,7 @@ defined( 'ABSPATH' ) || exit;
 	</div>
 
 	<form id="arm-payment-form" class="arm-payment-form">
-		<?php wp_nonce_field( 'arm_payment_form', 'nonce' ); ?>
+		<?php nonce_field( 'arm_payment_form', 'nonce' ); ?>
 
 		<div class="form-row">
 			<label for="payment_amount">

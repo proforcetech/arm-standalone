@@ -33,21 +33,21 @@ class PayPalController {
     }
 
     /** Create PayPal order for an invoice */
-    public static function rest_create_order(\WP_REST_Request $req) {
+    public static function rest_create_order(\REST_Request $req) {
         $invoice_id = (int)$req->get_param('invoice_id');
-        if (!$invoice_id) return new \WP_REST_Response(['error'=>'invoice_id required'], 400);
+        if (!$invoice_id) return new \REST_Response(['error'=>'invoice_id required'], 400);
 
-        global $wpdb;
-        $iT = $wpdb->prefix.'arm_invoices';
-        $inv = $wpdb->get_row($wpdb->prepare("SELECT * FROM $iT WHERE id=%d", $invoice_id));
-        if (!$inv) return new \WP_REST_Response(['error'=>'Invoice not found'], 404);
-        if ($inv->status === 'PAID') return new \WP_REST_Response(['error'=>'Invoice already paid'], 409);
+        global $db;
+        $iT = $db->prefix.'arm_invoices';
+        $inv = $db->get_row($db->prepare("SELECT * FROM $iT WHERE id=%d", $invoice_id));
+        if (!$inv) return new \REST_Response(['error'=>'Invoice not found'], 404);
+        if ($inv->status === 'PAID') return new \REST_Response(['error'=>'Invoice already paid'], 409);
 
         $amount = number_format((float)$inv->total, 2, '.', '');
         $currency = strtoupper(get_option('arm_re_currency','USD'));
 
         $token = self::oauth_token();
-        if (!$token) return new \WP_REST_Response(['error'=>'PayPal not configured'], 500);
+        if (!$token) return new \REST_Response(['error'=>'PayPal not configured'], 500);
 
         $endpoint = self::base().'/v2/checkout/orders';
         $payload = [
@@ -59,17 +59,17 @@ class PayPalController {
             ]]
         ];
         $resp = self::http('POST', $endpoint, $payload, ['Authorization: Bearer '.$token, 'Content-Type: application/json']);
-        if (empty($resp['id'])) return new \WP_REST_Response(['error'=>'PayPal error','detail'=>$resp], 502);
-        return new \WP_REST_Response(['id'=>$resp['id']], 200);
+        if (empty($resp['id'])) return new \REST_Response(['error'=>'PayPal error','detail'=>$resp], 502);
+        return new \REST_Response(['id'=>$resp['id']], 200);
     }
 
     /** Capture a PayPal order and mark invoice PAID */
-    public static function rest_capture_order(\WP_REST_Request $req) {
+    public static function rest_capture_order(\REST_Request $req) {
         $order_id = sanitize_text_field($req->get_param('order_id'));
-        if (!$order_id) return new \WP_REST_Response(['error'=>'order_id required'], 400);
+        if (!$order_id) return new \REST_Response(['error'=>'order_id required'], 400);
 
         $token = self::oauth_token();
-        if (!$token) return new \WP_REST_Response(['error'=>'PayPal not configured'], 500);
+        if (!$token) return new \REST_Response(['error'=>'PayPal not configured'], 500);
 
         $endpoint = self::base().'/v2/checkout/orders/'.$order_id.'/capture';
         $resp = self::http('POST', $endpoint, (object)[], ['Authorization: Bearer '.$token, 'Content-Type: application/json']);
@@ -80,12 +80,12 @@ class PayPalController {
             $ref = null;
             if (!empty($resp['purchase_units'][0]['reference_id'])) $ref = (int)$resp['purchase_units'][0]['reference_id'];
             if ($ref) {
-                global $wpdb; $iT = $wpdb->prefix.'arm_invoices';
-                $wpdb->update($iT, ['status'=>'PAID','updated_at'=>current_time('mysql')], ['id'=>$ref]);
+                global $db; $iT = $db->prefix.'arm_invoices';
+                $db->update($iT, ['status'=>'PAID','updated_at'=>current_time('mysql')], ['id'=>$ref]);
             }
-            return new \WP_REST_Response(['status'=>'PAID'], 200);
+            return new \REST_Response(['status'=>'PAID'], 200);
         }
-        return new \WP_REST_Response(['error'=>'capture_failed','detail'=>$resp], 502);
+        return new \REST_Response(['error'=>'capture_failed','detail'=>$resp], 502);
     }
 
     /** --------------------------- Helpers -------------------------- */

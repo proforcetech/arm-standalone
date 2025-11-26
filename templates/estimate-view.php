@@ -141,7 +141,7 @@ if (!empty($assigned_technician) && is_array($assigned_technician)) {
 
     <?php if (!empty($est->notes)): ?>
       <div style="margin-top:12px;padding:12px;border-left:3px solid #e5e5e5;background:#fafafa;">
-        <?php echo wpautop(wp_kses_post($est->notes)); ?>
+        <?php echo wpautop(kses_post($est->notes)); ?>
       </div>
     <?php endif; ?>
 

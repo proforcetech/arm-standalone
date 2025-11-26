@@ -31,11 +31,11 @@ final class InventoryAlerts
     public static function render(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(esc_html__('You do not have permission to view this page.', 'arm-repair-estimates'));
+            die(esc_html__('You do not have permission to view this page.', 'arm-repair-estimates'));
         }
 
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_inventory';
+        global $db;
+        $tbl = $db->prefix . 'arm_inventory';
         $cols = self::schema_map($tbl);
 
         if (!$cols['qty'] || !$cols['threshold'] || !$cols['name']) {
@@ -47,7 +47,7 @@ final class InventoryAlerts
         $fields = array_filter([$cols['id'] ?? 'id', $cols['name'], $cols['sku'] ?? 'sku', $cols['qty'], $cols['threshold']]);
         $select = implode(',', array_map(static fn($c) => "$c AS `$c`", $fields));
         $sql = "SELECT $select FROM $tbl WHERE {$cols['qty']} <= {$cols['threshold']} ORDER BY {$cols['qty']} ASC, {$cols['name']} ASC";
-        $items = $wpdb->get_results($sql);
+        $items = $db->get_results($sql);
 
         $back = admin_url('admin.php?page=arm-inventory');
         ?>
@@ -99,9 +99,9 @@ final class InventoryAlerts
     /** Minimal schema detector re-used here */
     private static function schema_map(string $table): array
     {
-        global $wpdb;
-        $cols = $wpdb->get_col(
-            $wpdb->prepare(
+        global $db;
+        $cols = $db->get_col(
+            $db->prepare(
                 "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s",
                 $table
             )

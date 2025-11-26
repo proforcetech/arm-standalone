@@ -42,7 +42,7 @@ final class Config
         $database  = $env['DB_NAME'] ?? '';
         $user      = $env['DB_USER'] ?? '';
         $password  = $env['DB_PASSWORD'] ?? '';
-        $prefix    = $env['DB_PREFIX'] ?? 'wp_';
+        $prefix    = $env['DB_PREFIX'] ?? '';
         $charset   = $env['DB_CHARSET'] ?? 'utf8mb4';
         $collation = $env['DB_COLLATE'] ?? 'utf8mb4_unicode_ci';
 

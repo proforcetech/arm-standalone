@@ -313,19 +313,19 @@ if (!function_exists('is_admin')) {
     }
 }
 
-if (!function_exists('wp_redirect')) {
+if (!function_exists('redirect')) {
     /**
      * Redirect to another page
      */
-    function wp_redirect(string $location, int $status = 302, string $x_redirect_by = 'WordPress'): bool
+    function redirect(string $location, int $status = 302, string $x_redirect_by = 'WordPress'): bool
     {
-        $location = apply_filters('wp_redirect', $location, $status);
+        $location = apply_filters('redirect', $location, $status);
 
         if (!$location) {
             return false;
         }
 
-        $status = apply_filters('wp_redirect_status', $status, $location);
+        $status = apply_filters('redirect_status', $status, $location);
 
         if (!headers_sent()) {
             header("Location: $location", true, $status);
@@ -336,36 +336,36 @@ if (!function_exists('wp_redirect')) {
     }
 }
 
-if (!function_exists('wp_safe_redirect')) {
+if (!function_exists('safe_redirect')) {
     /**
      * Safely redirect to another page (same domain only)
      */
-    function wp_safe_redirect(string $location, int $status = 302, string $x_redirect_by = 'WordPress'): bool
+    function safe_redirect(string $location, int $status = 302, string $x_redirect_by = 'WordPress'): bool
     {
-        $location = wp_sanitize_redirect($location);
-        return wp_redirect($location, $status, $x_redirect_by);
+        $location = sanitize_redirect($location);
+        return redirect($location, $status, $x_redirect_by);
     }
 }
 
-if (!function_exists('wp_sanitize_redirect')) {
+if (!function_exists('sanitize_redirect')) {
     /**
      * Sanitize redirect URL
      */
-    function wp_sanitize_redirect(string $location): string
+    function sanitize_redirect(string $location): string
     {
         // Strip any script tags
         $location = preg_replace('|[^a-z0-9-~+_.?#=&;,/:%!*\[\]@]|i', '', $location);
-        $location = wp_kses_no_null($location, ['slash_zero' => 'keep']);
+        $location = kses_no_null($location, ['slash_zero' => 'keep']);
 
         return $location;
     }
 }
 
-if (!function_exists('wp_kses_no_null')) {
+if (!function_exists('kses_no_null')) {
     /**
      * Remove null characters from string
      */
-    function wp_kses_no_null(string $string, array $options = []): string
+    function kses_no_null(string $string, array $options = []): string
     {
         if (str_contains($string, "\0")) {
             $string = str_replace("\0", '', $string);

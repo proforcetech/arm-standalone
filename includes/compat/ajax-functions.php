@@ -7,8 +7,8 @@ declare(strict_types=1);
 
 use ARM\Auth\AuthService;
 
-if (!function_exists('wp_send_json_success')) {
-    function wp_send_json_success($data = null, int $status_code = 200, int $options = 0): void
+if (!function_exists('send_json_success')) {
+    function send_json_success($data = null, int $status_code = 200, int $options = 0): void
     {
         $response = ['success' => true];
 
@@ -16,26 +16,26 @@ if (!function_exists('wp_send_json_success')) {
             $response['data'] = $data;
         }
 
-        wp_send_json($response, $status_code, $options);
+        send_json($response, $status_code, $options);
     }
 }
 
-if (!function_exists('wp_send_json')) {
-    function wp_send_json($response, int $status_code = null, int $options = 0): void
+if (!function_exists('send_json')) {
+    function send_json($response, int $status_code = null, int $options = 0): void
     {
         if ($status_code) {
             http_response_code($status_code);
         }
 
         header('Content-Type: application/json; charset=utf-8');
-        echo wp_json_encode($response, $options);
+        echo json_encode($response, $options);
 
         exit;
     }
 }
 
-if (!function_exists('wp_json_encode')) {
-    function wp_json_encode($data, int $options = 0, int $depth = 512)
+if (!function_exists('json_encode')) {
+    function json_encode($data, int $options = 0, int $depth = 512)
     {
         $json = json_encode($data, $options, $depth);
 
@@ -63,30 +63,30 @@ if (!function_exists('check_ajax_referer')) {
             $nonce = $_REQUEST['_wpnonce'];
         }
 
-        $result = wp_verify_nonce($nonce, $action);
+        $result = verify_nonce($nonce, $action);
 
         do_action('check_ajax_referer', $action, $result);
 
         if ($stop && !$result) {
-            wp_die('Security check failed', 403);
+            die('Security check failed', 403);
         }
 
         return $result;
     }
 }
 
-if (!function_exists('wp_doing_ajax')) {
-    function wp_doing_ajax(): bool
+if (!function_exists('doing_ajax')) {
+    function doing_ajax(): bool
     {
         return defined('DOING_AJAX') && DOING_AJAX;
     }
 }
 
-if (!function_exists('wp_ajax_response')) {
+if (!function_exists('ajax_response')) {
     /**
      * Send XML response for legacy AJAX
      */
-    function wp_ajax_response($args = []): void
+    function ajax_response($args = []): void
     {
         $defaults = [
             'what' => 'object',
@@ -99,14 +99,14 @@ if (!function_exists('wp_ajax_response')) {
 
         $parsed_args = array_merge($defaults, $args);
 
-        $x = new WP_Ajax_Response($parsed_args);
+        $x = new Ajax_Response($parsed_args);
         $x->send();
     }
 }
 
 // Simple XML response class for legacy support
-if (!class_exists('WP_Ajax_Response')) {
-    class WP_Ajax_Response
+if (!class_exists('Ajax_Response')) {
+    class Ajax_Response
     {
         public array $responses = [];
 
@@ -126,7 +126,7 @@ if (!class_exists('WP_Ajax_Response')) {
         {
             header('Content-Type: text/xml; charset=utf-8');
             echo "<?xml version='1.0' encoding='utf-8' standalone='yes'?>\n";
-            echo "<wp_ajax>\n";
+            echo "<ajax>\n";
 
             foreach ($this->responses as $response) {
                 $id = $response['id'] ?? 0;
@@ -166,7 +166,7 @@ if (!class_exists('WP_Ajax_Response')) {
                 echo "</response>\n";
             }
 
-            echo "</wp_ajax>";
+            echo "</ajax>";
             exit;
         }
     }

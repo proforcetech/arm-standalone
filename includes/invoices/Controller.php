@@ -33,10 +33,10 @@ class Controller {
      * DB tables for invoices and items
      * --------------------------------------------------------------*/
     public static function install_tables() {
-        global $wpdb; require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        $charset = $wpdb->get_charset_collate();
-        $invT = $wpdb->prefix . 'arm_invoices';
-        $itT  = $wpdb->prefix . 'arm_invoice_items';
+        global $db; require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        $charset = $db->get_charset_collate();
+        $invT = $db->prefix . 'arm_invoices';
+        $itT  = $db->prefix . 'arm_invoice_items';
 
         dbDelta("CREATE TABLE $invT (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -78,7 +78,7 @@ class Controller {
      * Helpers
      * --------------------------------------------------------------*/
     private static function next_invoice_no() {
-        return 'INV-' . date('Ymd') . '-' . wp_rand(1000, 9999);
+        return 'INV-' . date('Ymd') . '-' . rand(1000, 9999);
     }
     private static function token() {
         return bin2hex(random_bytes(16));
@@ -88,27 +88,27 @@ class Controller {
      * Convert an APPROVED estimate into an invoice
      * --------------------------------------------------------------*/
     public static function convert_from_estimate() {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('manage_options')) die('Nope');
         check_admin_referer('arm_re_convert_estimate_to_invoice');
 
-        global $wpdb;
+        global $db;
         $eid  = (int)($_GET['id'] ?? 0);
 
-        $eT   = $wpdb->prefix . 'arm_estimates';
-        $eiT  = $wpdb->prefix . 'arm_estimate_items';
-        $invT = $wpdb->prefix . 'arm_invoices';
-        $iiT  = $wpdb->prefix . 'arm_invoice_items';
+        $eT   = $db->prefix . 'arm_estimates';
+        $eiT  = $db->prefix . 'arm_estimate_items';
+        $invT = $db->prefix . 'arm_invoices';
+        $iiT  = $db->prefix . 'arm_invoice_items';
 
-        $e = $wpdb->get_row($wpdb->prepare("SELECT * FROM $eT WHERE id=%d", $eid));
-        if (!$e) wp_die('Estimate not found');
+        $e = $db->get_row($db->prepare("SELECT * FROM $eT WHERE id=%d", $eid));
+        if (!$e) die('Estimate not found');
 
         
         if ($e->status !== 'APPROVED') {
-            wp_die('Estimate must be APPROVED before conversion.');
+            die('Estimate must be APPROVED before conversion.');
         }
 
         
-        $wpdb->insert($invT, [
+        $db->insert($invT, [
             'estimate_id' => $e->id,
             'customer_id' => $e->customer_id,
             'invoice_no'  => self::next_invoice_no(),
@@ -121,15 +121,15 @@ class Controller {
             'token'       => self::token(),
             'created_at'  => current_time('mysql'),
         ]);
-        $inv_id = (int)$wpdb->insert_id;
+        $inv_id = (int)$db->insert_id;
 
         
-        $items = $wpdb->get_results($wpdb->prepare(
+        $items = $db->get_results($db->prepare(
             "SELECT * FROM $eiT WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $eid
         ));
         $i = 0;
         foreach ($items as $it) {
-            $wpdb->insert($iiT, [
+            $db->insert($iiT, [
                 'invoice_id' => $inv_id,
                 'item_type'  => $it->item_type,
                 'description'=> $it->description,
@@ -145,7 +145,7 @@ class Controller {
         
         $addedExtras = 0;
         if (!empty($e->callout_fee) && (float)$e->callout_fee > 0) {
-            $wpdb->insert($iiT, [
+            $db->insert($iiT, [
                 'invoice_id' => $inv_id,
                 'item_type'  => 'CALLOUT',
                 'description'=> __('Call-out Fee','arm-repair-estimates'),
@@ -164,7 +164,7 @@ class Controller {
                 number_format_i18n((float)$e->mileage_miles, 2),
                 number_format_i18n((float)$e->mileage_rate, 2)
             );
-            $wpdb->insert($iiT, [
+            $db->insert($iiT, [
                 'invoice_id' => $inv_id,
                 'item_type'  => 'MILEAGE',
                 'description'=> $desc,
@@ -182,7 +182,7 @@ class Controller {
             \ARM\Audit\Logger::log('estimate', $eid, 'converted_to_invoice', 'admin', ['invoice_id' => $inv_id, 'extras' => $addedExtras]);
         }
 
-        wp_redirect(admin_url('admin.php?page=arm-repair-invoices&converted=' . $inv_id));
+        redirect(admin_url('admin.php?page=arm-repair-invoices&converted=' . $inv_id));
         exit;
     }
 
@@ -191,11 +191,11 @@ class Controller {
      * --------------------------------------------------------------*/
     public static function render_admin() {
         if (!current_user_can('manage_options')) return;
-        global $wpdb;
-        $invT = $wpdb->prefix . 'arm_invoices';
-        $cT   = $wpdb->prefix . 'arm_customers';
+        global $db;
+        $invT = $db->prefix . 'arm_invoices';
+        $cT   = $db->prefix . 'arm_customers';
 
-        $rows = $wpdb->get_results("
+        $rows = $db->get_results("
             SELECT i.*, CONCAT(c.first_name,' ',c.last_name) AS customer, c.email
             FROM $invT i JOIN $cT c ON c.id=i.customer_id
             ORDER BY i.created_at DESC
@@ -254,16 +254,16 @@ class Controller {
         $token = get_query_var('arm_invoice');
         if (!$token) return;
 
-        global $wpdb;
-        $invT = $wpdb->prefix . 'arm_invoices';
-        $itT  = $wpdb->prefix . 'arm_invoice_items';
-        $cT   = $wpdb->prefix . 'arm_customers';
+        global $db;
+        $invT = $db->prefix . 'arm_invoices';
+        $itT  = $db->prefix . 'arm_invoice_items';
+        $cT   = $db->prefix . 'arm_customers';
 
-        $inv = $wpdb->get_row($wpdb->prepare("SELECT * FROM $invT WHERE token=%s", $token));
-        if (!$inv) { status_header(404); wp_die('Invoice not found'); }
+        $inv = $db->get_row($db->prepare("SELECT * FROM $invT WHERE token=%s", $token));
+        if (!$inv) { status_header(404); die('Invoice not found'); }
 
-        $items = $wpdb->get_results($wpdb->prepare("SELECT * FROM $itT WHERE invoice_id=%d ORDER BY sort_order ASC, id ASC", (int)$inv->id));
-        $cust  = $wpdb->get_row($wpdb->prepare("SELECT * FROM $cT WHERE id=%d", (int)$inv->customer_id));
+        $items = $db->get_results($db->prepare("SELECT * FROM $itT WHERE invoice_id=%d ORDER BY sort_order ASC, id ASC", (int)$inv->id));
+        $cust  = $db->get_row($db->prepare("SELECT * FROM $cT WHERE id=%d", (int)$inv->customer_id));
 
         
         if (defined('ARM_RE_PATH') && file_exists(ARM_RE_PATH . 'templates/invoice-view.php')) {

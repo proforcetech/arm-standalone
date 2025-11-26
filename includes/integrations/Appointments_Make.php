@@ -25,9 +25,9 @@ final class Appointments_Make
     public static function on_updated(int $appt_id, string $start, string $end): void
     {
         
-        global $wpdb;
-        $estimate_id = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT estimate_id FROM {$wpdb->prefix}arm_appointments WHERE id=%d", $appt_id
+        global $db;
+        $estimate_id = (int) $db->get_var($db->prepare(
+            "SELECT estimate_id FROM {$db->prefix}arm_appointments WHERE id=%d", $appt_id
         ));
         self::send('appointment.updated', $appt_id, $estimate_id, $start, $end);
     }
@@ -40,18 +40,18 @@ final class Appointments_Make
     /** Compose payload to match the Make scenario. */
     private static function send(string $type, int $appt_id, int $estimate_id, string $start, string $end): void
     {
-        global $wpdb;
-        $pfx = $wpdb->prefix;
+        global $db;
+        $pfx = $db->prefix;
 
         
-        $appt = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$pfx}arm_appointments WHERE id=%d", $appt_id));
+        $appt = $db->get_row($db->prepare("SELECT * FROM {$pfx}arm_appointments WHERE id=%d", $appt_id));
         $est  = $estimate_id > 0
-            ? $wpdb->get_row($wpdb->prepare("SELECT * FROM {$pfx}arm_estimates WHERE id=%d", $estimate_id))
+            ? $db->get_row($db->prepare("SELECT * FROM {$pfx}arm_estimates WHERE id=%d", $estimate_id))
             : null;
 
         $customer = null;
         if ($est && isset($est->customer_id) && (int) $est->customer_id > 0) {
-            $customer = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$pfx}arm_customers WHERE id=%d", (int) $est->customer_id));
+            $customer = $db->get_row($db->prepare("SELECT * FROM {$pfx}arm_customers WHERE id=%d", (int) $est->customer_id));
         }
 
         $cust_name = trim(

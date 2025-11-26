@@ -12,7 +12,7 @@ class FinancialReports
     public static function render(): void
     {
         if (!current_user_can(Transactions::capability())) {
-            wp_die(__('You do not have permission to access this screen.', 'arm-repair-estimates'));
+            die(__('You do not have permission to access this screen.', 'arm-repair-estimates'));
         }
 
         if (!empty($_GET['export']) && $_GET['export'] === 'csv') {
@@ -20,8 +20,8 @@ class FinancialReports
         }
 
         $filters = [
-            'from' => isset($_GET['from']) ? sanitize_text_field(wp_unslash($_GET['from'])) : '',
-            'to'   => isset($_GET['to']) ? sanitize_text_field(wp_unslash($_GET['to'])) : '',
+            'from' => isset($_GET['from']) ? sanitize_text_field(unslash($_GET['from'])) : '',
+            'to'   => isset($_GET['to']) ? sanitize_text_field(unslash($_GET['to'])) : '',
         ];
 
         $totals = [
@@ -75,8 +75,8 @@ class FinancialReports
     private static function export(): void
     {
         $filters = [
-            'from' => isset($_GET['from']) ? sanitize_text_field(wp_unslash($_GET['from'])) : '',
-            'to'   => isset($_GET['to']) ? sanitize_text_field(wp_unslash($_GET['to'])) : '',
+            'from' => isset($_GET['from']) ? sanitize_text_field(unslash($_GET['from'])) : '',
+            'to'   => isset($_GET['to']) ? sanitize_text_field(unslash($_GET['to'])) : '',
         ];
         $monthly = self::build_monthly_summary($filters);
 

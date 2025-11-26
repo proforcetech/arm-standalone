@@ -40,13 +40,13 @@ if (!defined('ARM_RE_URL')) {
 
 // Load WordPress compatibility layers (must be loaded before anything else)
 require_once __DIR__ . '/compat/hooks.php';
-require_once __DIR__ . '/compat/wpdb.php';
+require_once __DIR__ . '/compat/db.php';
 require_once __DIR__ . '/compat/sanitization-functions.php';
 require_once __DIR__ . '/compat/i18n-functions.php';
 require_once __DIR__ . '/compat/options-api.php';
 require_once __DIR__ . '/compat/ajax-functions.php';
 require_once __DIR__ . '/compat/admin-functions.php';
-require_once __DIR__ . '/compat/wpdb-init.php';
+require_once __DIR__ . '/compat/db-init.php';
 
 // Start session if not already started (for authentication)
 if (session_status() === PHP_SESSION_NONE) {

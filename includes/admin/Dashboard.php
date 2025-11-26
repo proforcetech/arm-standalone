@@ -16,8 +16,8 @@ use function esc_html_e;
 use function esc_js;
 use function esc_url;
 use function number_format_i18n;
-use function wp_enqueue_script;
-use function wp_json_encode;
+use function enqueue_script;
+use function json_encode;
 
 final class Dashboard
 {
@@ -44,7 +44,7 @@ final class Dashboard
         if (strpos($hook, 'arm-dashboard') === false) {
             return;
         }
-        wp_enqueue_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', [], null, true);
+        enqueue_script('chart-js', 'https://cdn.jsdelivr.net/npm/chart.js', [], null, true);
     }
 
     public static function render_dashboard(): void
@@ -53,16 +53,16 @@ final class Dashboard
             return;
         }
 
-        global $wpdb;
+        global $db;
 
-        $estimates = DashboardMetrics::estimate_counts($wpdb);
-        $invoices  = DashboardMetrics::invoice_counts($wpdb);
-        $inventory = DashboardMetrics::inventory_value($wpdb);
-        $warranty  = DashboardMetrics::warranty_claim_counts($wpdb);
-        $sms       = DashboardMetrics::sms_totals($wpdb);
+        $estimates = DashboardMetrics::estimate_counts($db);
+        $invoices  = DashboardMetrics::invoice_counts($db);
+        $inventory = DashboardMetrics::inventory_value($db);
+        $warranty  = DashboardMetrics::warranty_claim_counts($db);
+        $sms       = DashboardMetrics::sms_totals($db);
 
-        $invoiceSeries  = DashboardMetrics::invoice_monthly_totals($wpdb);
-        $estimateSeries = DashboardMetrics::estimate_trends($wpdb);
+        $invoiceSeries  = DashboardMetrics::invoice_monthly_totals($db);
+        $estimateSeries = DashboardMetrics::estimate_trends($db);
 
         $smsLabels = [];
         $smsSent = [];
@@ -158,10 +158,10 @@ final class Dashboard
                 new Chart(invoiceCtx.getContext('2d'), {
                     type: 'bar',
                     data: {
-                        labels: <?php echo wp_json_encode($invoiceSeries['labels']); ?>,
+                        labels: <?php echo json_encode($invoiceSeries['labels']); ?>,
                         datasets: [{
                             label: '<?php echo esc_js(__('Invoice Totals', 'arm-repair-estimates')); ?>',
-                            data: <?php echo wp_json_encode($invoiceSeries['totals']); ?>,
+                            data: <?php echo json_encode($invoiceSeries['totals']); ?>,
                             backgroundColor: 'rgba(75, 192, 192, 0.6)'
                         }]
                     },
@@ -174,17 +174,17 @@ final class Dashboard
                 new Chart(estimateCtx.getContext('2d'), {
                     type: 'line',
                     data: {
-                        labels: <?php echo wp_json_encode($estimateSeries['labels']); ?>,
+                        labels: <?php echo json_encode($estimateSeries['labels']); ?>,
                         datasets: [
                             {
                                 label: '<?php echo esc_js(__('Approved', 'arm-repair-estimates')); ?>',
-                                data: <?php echo wp_json_encode($estimateSeries['approved']); ?>,
+                                data: <?php echo json_encode($estimateSeries['approved']); ?>,
                                 borderColor: 'rgba(54, 162, 235, 1)',
                                 fill: false
                             },
                             {
                                 label: '<?php echo esc_js(__('Rejected', 'arm-repair-estimates')); ?>',
-                                data: <?php echo wp_json_encode($estimateSeries['rejected']); ?>,
+                                data: <?php echo json_encode($estimateSeries['rejected']); ?>,
                                 borderColor: 'rgba(255, 99, 132, 1)',
                                 fill: false
                             }
@@ -199,21 +199,21 @@ final class Dashboard
                 new Chart(smsCtx.getContext('2d'), {
                     type: 'bar',
                     data: {
-                        labels: <?php echo wp_json_encode($smsLabels); ?>,
+                        labels: <?php echo json_encode($smsLabels); ?>,
                         datasets: [
                             {
                                 label: '<?php echo esc_js(__('Sent', 'arm-repair-estimates')); ?>',
-                                data: <?php echo wp_json_encode($smsSent); ?>,
+                                data: <?php echo json_encode($smsSent); ?>,
                                 backgroundColor: 'rgba(54, 162, 235, 0.5)'
                             },
                             {
                                 label: '<?php echo esc_js(__('Delivered', 'arm-repair-estimates')); ?>',
-                                data: <?php echo wp_json_encode($smsDelivered); ?>,
+                                data: <?php echo json_encode($smsDelivered); ?>,
                                 backgroundColor: 'rgba(75, 192, 92, 0.5)'
                             },
                             {
                                 label: '<?php echo esc_js(__('Failed', 'arm-repair-estimates')); ?>',
-                                data: <?php echo wp_json_encode($smsFailed); ?>,
+                                data: <?php echo json_encode($smsFailed); ?>,
                                 backgroundColor: 'rgba(255, 99, 132, 0.5)'
                             }
                         ]

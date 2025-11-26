@@ -15,14 +15,14 @@ class Admin
     public static function enqueue_assets(string $hook_suffix): void
     {
         if ($hook_suffix === 'arm-repair-estimates_page_arm-repair-inspections') {
-            wp_enqueue_script('jquery');
+            enqueue_script('jquery');
         }
     }
 
     public static function render(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have permission to manage inspection templates.', 'arm-repair-estimates'));
+            die(__('You do not have permission to manage inspection templates.', 'arm-repair-estimates'));
         }
 
         $action = isset($_GET['action']) ? sanitize_key($_GET['action']) : 'list';
@@ -75,7 +75,7 @@ class Admin
                                     <?php esc_html_e('Edit', 'arm-repair-estimates'); ?>
                                 </a>
                                 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" style="display:inline;">
-                                    <?php wp_nonce_field('arm_re_delete_inspection_template'); ?>
+                                    <?php nonce_field('arm_re_delete_inspection_template'); ?>
                                     <input type="hidden" name="action" value="arm_re_delete_inspection_template">
                                     <input type="hidden" name="id" value="<?php echo (int) $template['id']; ?>">
                                     <button type="submit" class="button-link-delete" onclick="return confirm('<?php echo esc_js(__('Delete this template?', 'arm-repair-estimates')); ?>');">
@@ -112,7 +112,7 @@ class Admin
         ];
 
         if (!$template) {
-            wp_die(__('Inspection template not found.', 'arm-repair-estimates'));
+            die(__('Inspection template not found.', 'arm-repair-estimates'));
         }
 
         $items = $template['items'];
@@ -139,10 +139,10 @@ class Admin
             <?php if (!empty($_GET['updated'])): ?>
                 <div class="notice notice-success is-dismissible"><p><?php esc_html_e('Template saved successfully.', 'arm-repair-estimates'); ?></p></div>
             <?php elseif (!empty($_GET['error'])): ?>
-                <div class="notice notice-error is-dismissible"><p><?php echo esc_html(wp_unslash($_GET['error'])); ?></p></div>
+                <div class="notice notice-error is-dismissible"><p><?php echo esc_html(unslash($_GET['error'])); ?></p></div>
             <?php endif; ?>
             <form method="post" action="<?php echo esc_url($action_url); ?>" class="arm-inspection-template-form">
-                <?php wp_nonce_field('arm_re_save_inspection_template'); ?>
+                <?php nonce_field('arm_re_save_inspection_template'); ?>
                 <input type="hidden" name="action" value="arm_re_save_inspection_template">
                 <input type="hidden" name="id" value="<?php echo (int) $template['id']; ?>">
 
@@ -234,7 +234,7 @@ class Admin
         <script>
         (function($){
             const rowTemplate = function(){
-                return $(<?php echo wp_json_encode(self::row_template_html($template)); ?>);
+                return $(<?php echo json_encode(self::row_template_html($template)); ?>);
             };
             $('#arm-add-inspection-item').on('click', function(){
                 $('#arm-inspection-items tbody').append(rowTemplate());
@@ -273,7 +273,7 @@ class Admin
             'include_notes' => 0,
             'note_label' => __('Notes', 'arm-repair-estimates'),
         ];
-        $item = wp_parse_args($item, $defaults);
+        $item = parse_args($item, $defaults);
         ?>
         <tr>
             <td style="width:20%;">
@@ -338,7 +338,7 @@ class Admin
     public static function handle_save(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(__('Insufficient permissions', 'arm-repair-estimates'));
+            die(__('Insufficient permissions', 'arm-repair-estimates'));
         }
 
         check_admin_referer('arm_re_save_inspection_template');
@@ -365,21 +365,21 @@ class Admin
             ], admin_url('admin.php'));
         }
 
-        wp_safe_redirect($redirect);
+        safe_redirect($redirect);
         exit;
     }
 
     public static function handle_delete(): void
     {
         if (!current_user_can('manage_options')) {
-            wp_die(__('Insufficient permissions', 'arm-repair-estimates'));
+            die(__('Insufficient permissions', 'arm-repair-estimates'));
         }
         check_admin_referer('arm_re_delete_inspection_template');
         $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
         if ($id) {
             Templates::delete($id);
         }
-        wp_safe_redirect(admin_url('admin.php?page=arm-repair-inspections'));
+        safe_redirect(admin_url('admin.php?page=arm-repair-inspections'));
         exit;
     }
 }

@@ -1,7 +1,7 @@
 <?php
 /**
  * WordPress Database Layer Compatibility
- * Mimics WordPress wpdb class using PDO
+ * Mimics WordPress db class using PDO
  */
 
 declare(strict_types=1);
@@ -9,10 +9,10 @@ declare(strict_types=1);
 use ARM\Database\Config;
 use ARM\Database\ConnectionFactory;
 
-if (!class_exists('wpdb')) {
-    class wpdb
+if (!class_exists('db')) {
+    class db
     {
-        private static ?wpdb $instance = null;
+        private static ?db $instance = null;
         private PDO $pdo;
         public string $prefix;
         public ?int $insert_id = null;

@@ -7,15 +7,15 @@ if (!defined('ABSPATH')) exit;
 
 class PartsTech {
     public static function boot() {
-        add_action('wp_ajax_arm_partstech_vin', [__CLASS__, 'ajax_vin']);
-        add_action('wp_ajax_arm_partstech_search', [__CLASS__, 'ajax_search']);
+        add_action('ajax_arm_partstech_vin', [__CLASS__, 'ajax_vin']);
+        add_action('ajax_arm_partstech_search', [__CLASS__, 'ajax_search']);
         add_action('admin_notices', [__CLASS__, 'render_admin_notices']);
     }
 
     public static function register_settings() {
         register_setting('arm_re_settings','arm_partstech_base',    ['type'=>'string','sanitize_callback'=>'esc_url_raw']);
         register_setting('arm_re_settings','arm_partstech_api_key', ['type'=>'string','sanitize_callback'=>'sanitize_text_field']);
-        register_setting('arm_re_settings','arm_re_markup_tiers',   ['type'=>'string','sanitize_callback'=>'wp_kses_post']);
+        register_setting('arm_re_settings','arm_re_markup_tiers',   ['type'=>'string','sanitize_callback'=>'kses_post']);
     }
 
     public static function is_configured(): bool {
@@ -32,20 +32,20 @@ class PartsTech {
     }
 
     public static function ajax_vin(): void {
-        if (!current_user_can('manage_options')) wp_send_json_error(['error' => 'forbidden'], 403);
+        if (!current_user_can('manage_options')) send_json_error(['error' => 'forbidden'], 403);
 
         $nonce = $_REQUEST['_ajax_nonce'] ?? $_REQUEST['nonce'] ?? '';
-        if (!wp_verify_nonce($nonce, 'arm_re_est_admin')) {
-            wp_send_json_error(['error' => 'invalid_nonce'], 403);
+        if (!verify_nonce($nonce, 'arm_re_est_admin')) {
+            send_json_error(['error' => 'invalid_nonce'], 403);
         }
         $vin = strtoupper(sanitize_text_field($_POST['vin'] ?? ''));
-        if ($vin === '') wp_send_json_error(['error' => 'missing vin'], 400);
+        if ($vin === '') send_json_error(['error' => 'missing vin'], 400);
         $resp = self::request('GET', '/catalog/v1/vehicles/lookup', ['vin' => $vin]);
-        if (!empty($resp['error'])) wp_send_json_error(['error' => $resp['error']], 500);
-        if (empty($resp['data'])) wp_send_json_error(['error' => 'no results'], 404);
+        if (!empty($resp['error'])) send_json_error(['error' => $resp['error']], 500);
+        if (empty($resp['data'])) send_json_error(['error' => 'no results'], 404);
         $vehicle = $resp['data'];
         $label = trim(($vehicle['year'] ?? '') . ' ' . ($vehicle['make'] ?? '') . ' ' . ($vehicle['model'] ?? ''));
-        wp_send_json_success([
+        send_json_success([
             'label' => $label,
             'vehicle' => [
                 'year'  => $vehicle['year'] ?? '',
@@ -57,14 +57,14 @@ class PartsTech {
     }
 
     public static function ajax_search(): void {
-        if (!current_user_can('manage_options')) wp_send_json_error(['error' => 'forbidden'], 403);
+        if (!current_user_can('manage_options')) send_json_error(['error' => 'forbidden'], 403);
 
         $nonce = $_REQUEST['_ajax_nonce'] ?? $_REQUEST['nonce'] ?? '';
-        if (!wp_verify_nonce($nonce, 'arm_re_est_admin')) {
-            wp_send_json_error(['error' => 'invalid_nonce'], 403);
+        if (!verify_nonce($nonce, 'arm_re_est_admin')) {
+            send_json_error(['error' => 'invalid_nonce'], 403);
         }
         $query = sanitize_text_field($_POST['query'] ?? '');
-        if ($query === '') wp_send_json_error(['error' => 'query required'], 400);
+        if ($query === '') send_json_error(['error' => 'query required'], 400);
         $vehicle = isset($_POST['vehicle']) && is_array($_POST['vehicle']) ? array_map('sanitize_text_field', $_POST['vehicle']) : [];
         $payload = [
             'query' => [
@@ -84,7 +84,7 @@ class PartsTech {
             $payload['vehicle'] = $vehiclePayload;
         }
         $resp = self::request('POST', '/catalog/v2/parts/search', $payload);
-        if (!empty($resp['error'])) wp_send_json_error(['error' => $resp['error']], 500);
+        if (!empty($resp['error'])) send_json_error(['error' => $resp['error']], 500);
         $results = [];
         foreach (($resp['items'] ?? []) as $item) {
             $results[] = [
@@ -95,7 +95,7 @@ class PartsTech {
                 'priceFormatted'=> isset($item['price']) ? '$' . number_format((float) $item['price'], 2) : '',
             ];
         }
-        wp_send_json_success(['results' => $results]);
+        send_json_success(['results' => $results]);
     }
 
     private static function request(string $method, string $path, $body): array {
@@ -118,20 +118,20 @@ class PartsTech {
         if ($method === 'GET') {
             $url = add_query_arg($body, $url);
         } else {
-            $args['body'] = wp_json_encode($body);
+            $args['body'] = json_encode($body);
         }
-        $resp = wp_remote_request($url, $args);
-        if (is_wp_error($resp)) {
+        $resp = remote_request($url, $args);
+        if (is_error($resp)) {
             self::log_error('request_failed', $resp->get_error_message(), $resp->get_error_message());
             return ['error' => $resp->get_error_message()];
         }
-        $body_raw = (string) wp_remote_retrieve_body($resp);
+        $body_raw = (string) remote_retrieve_body($resp);
         $data = json_decode($body_raw, true);
         if (!is_array($data)) {
             self::log_error('invalid_response', $body_raw);
             return ['error' => __('Invalid response from PartsTech', 'arm-repair-estimates')];
         }
-        $status = (int) wp_remote_retrieve_response_code($resp);
+        $status = (int) remote_retrieve_response_code($resp);
         if ($status >= 400) {
             $message = self::extract_error_message($data) ?: sprintf(__('PartsTech request failed (HTTP %d)', 'arm-repair-estimates'), $status);
             self::log_error('http_' . $status, $data, $message);

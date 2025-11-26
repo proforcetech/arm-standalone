@@ -69,12 +69,12 @@ class Zoho {
 
     public static function handle_invoice_paid(int $invoice_id, string $gateway, string $reference): void {
         if (!self::is_configured()) return;
-        global $wpdb;
-        $tblInv = $wpdb->prefix . 'arm_invoices';
-        $tblCust= $wpdb->prefix . 'arm_customers';
-        $invoice = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblInv WHERE id=%d", $invoice_id));
+        global $db;
+        $tblInv = $db->prefix . 'arm_invoices';
+        $tblCust= $db->prefix . 'arm_customers';
+        $invoice = $db->get_row($db->prepare("SELECT * FROM $tblInv WHERE id=%d", $invoice_id));
         if (!$invoice) return;
-        $customer = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblCust WHERE id=%d", (int) $invoice->customer_id));
+        $customer = $db->get_row($db->prepare("SELECT * FROM $tblCust WHERE id=%d", (int) $invoice->customer_id));
         if (!$customer) return;
         $contact_id = self::upsert_contact((int) $customer->id, [
             'first_name' => $customer->first_name,
@@ -103,9 +103,9 @@ class Zoho {
         if (!self::is_configured() || !$estimate || ($estimate->status ?? '') !== 'APPROVED') {
             return;
         }
-        global $wpdb;
-        $tblCust = $wpdb->prefix . 'arm_customers';
-        $customer = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblCust WHERE id=%d", (int) $estimate->customer_id));
+        global $db;
+        $tblCust = $db->prefix . 'arm_customers';
+        $customer = $db->get_row($db->prepare("SELECT * FROM $tblCust WHERE id=%d", (int) $estimate->customer_id));
         if ($customer) {
             self::upsert_contact((int) $customer->id, [
                 'first_name' => $customer->first_name,
@@ -164,7 +164,7 @@ class Zoho {
         $client  = trim((string) get_option('arm_zoho_client_id', ''));
         $secret  = trim((string) get_option('arm_zoho_client_secret', ''));
         if (!$refresh || !$client || !$secret) return null;
-        $resp = wp_remote_post(sprintf('https://accounts.zoho.%s/oauth/v2/token', $dc), [
+        $resp = remote_post(sprintf('https://accounts.zoho.%s/oauth/v2/token', $dc), [
             'timeout' => 15,
             'body' => [
                 'grant_type'    => 'refresh_token',
@@ -173,11 +173,11 @@ class Zoho {
                 'client_secret' => $secret,
             ],
         ]);
-        if (is_wp_error($resp)) {
+        if (is_error($resp)) {
             self::log_error('token_request', $resp->get_error_message());
             return null;
         }
-        $json = json_decode((string) wp_remote_retrieve_body($resp), true);
+        $json = json_decode((string) remote_retrieve_body($resp), true);
         if (!is_array($json) || empty($json['access_token'])) {
             self::log_error('token_decode', $json);
             return null;
@@ -206,16 +206,16 @@ class Zoho {
         if ($method === 'GET') {
             $url = add_query_arg($params, $url);
         } else {
-            $args['body'] = wp_json_encode($params);
+            $args['body'] = json_encode($params);
         }
-        $resp = wp_remote_request($url, $args);
-        if (is_wp_error($resp)) {
+        $resp = remote_request($url, $args);
+        if (is_error($resp)) {
             self::log_error('request', $resp->get_error_message());
             return ['error' => $resp->get_error_message()];
         }
-        $json = json_decode((string) wp_remote_retrieve_body($resp), true);
+        $json = json_decode((string) remote_retrieve_body($resp), true);
         if (!is_array($json)) {
-            self::log_error('response', wp_remote_retrieve_body($resp));
+            self::log_error('response', remote_retrieve_body($resp));
             return ['error' => __('Invalid response from Zoho', 'arm-repair-estimates')];
         }
         return $json;

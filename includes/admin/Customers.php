@@ -19,7 +19,7 @@ final class Customers {
         \add_action('admin_post_arm_re_customer_import_crm',   [__CLASS__, 'handle_import_crm']);
 
         
-        \add_action('wp_ajax_arm_re_customer_search',          [__CLASS__, 'ajax_search']);
+        \add_action('ajax_arm_re_customer_search',          [__CLASS__, 'ajax_search']);
     }
 
     /** Add submenu under main plugin menu */
@@ -83,8 +83,8 @@ final class Customers {
 
     /** ===== List view with search & pagination ===== */
     private static function render_list(): void {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_customers';
+        global $db;
+        $tbl = $db->prefix . 'arm_customers';
 
         $q     = isset($_GET['s']) ? \sanitize_text_field($_GET['s']) : '';
         $page  = max(1, (int)($_GET['paged'] ?? 1));
@@ -94,16 +94,16 @@ final class Customers {
         $where = 'WHERE 1=1';
         $params = [];
         if ($q !== '') {
-            $like   = '%' . $wpdb->esc_like($q) . '%';
+            $like   = '%' . $db->esc_like($q) . '%';
             $where .= " AND (first_name LIKE %s OR last_name LIKE %s OR email LIKE %s OR phone LIKE %s)";
             $params = [$like, $like, $like, $like];
         }
 
         $sql = "SELECT SQL_CALC_FOUND_ROWS * FROM $tbl $where ORDER BY created_at DESC LIMIT %d OFFSET %d";
         $rows = $params
-            ? $wpdb->get_results($wpdb->prepare($sql, array_merge($params, [$per, $off])))
-            : $wpdb->get_results($wpdb->prepare($sql, $per, $off));
-        $total = (int) $wpdb->get_var("SELECT FOUND_ROWS()");
+            ? $db->get_results($db->prepare($sql, array_merge($params, [$per, $off])))
+            : $db->get_results($db->prepare($sql, $per, $off));
+        $total = (int) $db->get_var("SELECT FOUND_ROWS()");
 
         $pages = max(1, (int) ceil($total / $per));
         $new_url    = \admin_url('admin.php?page=arm-repair-customers&action=new');
@@ -137,7 +137,7 @@ final class Customers {
                 $addr = trim(($r->address ?? '') . ( ($r->city ?? '') ? ', '.$r->city : '' ) . ( ($r->state ?? '') ? ', '.$r->state : '' ) . ( ($r->zip ?? '') ? ' '.$r->zip : '' ));
                 $detail = \admin_url('admin.php?page=arm-customer-detail&id='.(int)$r->id);
                 $edit   = \admin_url('admin.php?page=arm-repair-customers&action=edit&id='.(int)$r->id);
-                $del    = \wp_nonce_url(\admin_url('admin-post.php?action=arm_re_customer_delete&id='.(int)$r->id), 'arm_re_customer_delete');
+                $del    = \nonce_url(\admin_url('admin-post.php?action=arm_re_customer_delete&id='.(int)$r->id), 'arm_re_customer_delete');
                 echo '<tr>';
                 echo '<td>'.esc_html($name ?: '').'</td>';
                 echo '<td>'.esc_html($r->email ?: '').'</td>';
@@ -167,12 +167,12 @@ final class Customers {
 
     /** ===== Add/Edit form ===== */
     private static function render_form(int $id = 0): void {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_customers';
+        global $db;
+        $tbl = $db->prefix . 'arm_customers';
 
         $row = null;
         if ($id) {
-            $row = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tbl WHERE id=%d", $id));
+            $row = $db->get_row($db->prepare("SELECT * FROM $tbl WHERE id=%d", $id));
             if (!$row) {
                 echo '<div class="notice notice-error"><p>'.esc_html__('Customer not found.', 'arm-repair-estimates').'</p></div>';
                 return;
@@ -180,7 +180,7 @@ final class Customers {
         }
 
         $title = $id ? __('Edit Customer', 'arm-repair-estimates') : __('Add Customer', 'arm-repair-estimates');
-        $nonce = \wp_create_nonce('arm_re_customer_save');
+        $nonce = \create_nonce('arm_re_customer_save');
 
         echo '<h1>'.esc_html($title).'</h1>';
         echo '<form method="post" action="'.esc_url(\admin_url('admin-post.php')).'">';
@@ -211,7 +211,7 @@ final class Customers {
         echo '<h1>'.esc_html__('Import Customers', 'arm-repair-estimates').'</h1>';
 
         
-        $csv_nonce = \wp_create_nonce('arm_re_customer_import_csv');
+        $csv_nonce = \create_nonce('arm_re_customer_import_csv');
         echo '<h2>'.esc_html__('CSV Import', 'arm-repair-estimates').'</h2>';
         echo '<p>'.esc_html__('Upload a CSV with these headers: first_name,last_name,email,phone,address,city,zip', 'arm-repair-estimates').'</p>';
         echo '<form method="post" action="'.esc_url(\admin_url('admin-post.php')).'" enctype="multipart/form-data" style="margin-bottom:20px;">';
@@ -224,7 +224,7 @@ final class Customers {
         echo '</form>';
 
         
-        $crm_nonce = \wp_create_nonce('arm_re_customer_import_crm');
+        $crm_nonce = \create_nonce('arm_re_customer_import_crm');
         echo '<h2>'.esc_html__('CRM Import', 'arm-repair-estimates').'</h2>';
         echo '<p>'.esc_html__('If your CRM integration is configured (e.g., Zoho), you can pull contacts into the customer list.', 'arm-repair-estimates').'</p>';
         echo '<form method="post" action="'.esc_url(\admin_url('admin-post.php')).'">';
@@ -237,11 +237,11 @@ final class Customers {
     /** ===== Handlers ===== */
 
     public static function handle_save(): void {
-        if (!\current_user_can('manage_options')) \wp_die('Nope');
+        if (!\current_user_can('manage_options')) \die('Nope');
         \check_admin_referer('arm_re_customer_save');
 
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_customers';
+        global $db;
+        $tbl = $db->prefix . 'arm_customers';
 
         $id = (int)($_POST['id'] ?? 0);
         $data = [
@@ -262,42 +262,42 @@ final class Customers {
         }
 
         if ($id) {
-            $wpdb->update($tbl, $data, ['id' => $id]);
+            $db->update($tbl, $data, ['id' => $id]);
         } else {
             $data['created_at'] = \current_time('mysql');
             
-            $exists_id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM $tbl WHERE email=%s", $data['email']));
+            $exists_id = (int) $db->get_var($db->prepare("SELECT id FROM $tbl WHERE email=%s", $data['email']));
             if ($exists_id) {
-                $wpdb->update($tbl, $data, ['id' => $exists_id]);
+                $db->update($tbl, $data, ['id' => $exists_id]);
                 $id = $exists_id;
             } else {
-                $wpdb->insert($tbl, $data);
-                $id = (int) $wpdb->insert_id;
+                $db->insert($tbl, $data);
+                $id = (int) $db->insert_id;
             }
         }
 
         \do_action('arm_re_customer_saved', $id, $data, 'admin_form');
 
-        \wp_redirect(\admin_url('admin.php?page=arm-repair-customers&action=edit&id='.$id.'&updated=1'));
+        \redirect(\admin_url('admin.php?page=arm-repair-customers&action=edit&id='.$id.'&updated=1'));
         exit;
     }
 
     public static function handle_delete(): void {
-        if (!\current_user_can('manage_options')) \wp_die('Nope');
+        if (!\current_user_can('manage_options')) \die('Nope');
         \check_admin_referer('arm_re_customer_delete');
 
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_customers';
+        global $db;
+        $tbl = $db->prefix . 'arm_customers';
         $id  = (int)($_GET['id'] ?? 0);
         if ($id) {
-            $wpdb->delete($tbl, ['id' => $id]);
+            $db->delete($tbl, ['id' => $id]);
         }
-        \wp_redirect(\admin_url('admin.php?page=arm-repair-customers&deleted=1'));
+        \redirect(\admin_url('admin.php?page=arm-repair-customers&deleted=1'));
         exit;
     }
 
     public static function handle_import_csv(): void {
-        if (!\current_user_can('manage_options')) \wp_die('Nope');
+        if (!\current_user_can('manage_options')) \die('Nope');
         \check_admin_referer('arm_re_customer_import_csv');
 
         if (empty($_FILES['csv']['tmp_name'])) {
@@ -328,8 +328,8 @@ final class Customers {
             }
         }
 
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_customers';
+        global $db;
+        $tbl = $db->prefix . 'arm_customers';
         $inserted = 0; $updated = 0;
 
         while (($row = \fgetcsv($fh)) !== false) {
@@ -345,7 +345,7 @@ final class Customers {
             if (!$rec['email']) continue;
 
             
-            $existing = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tbl WHERE email=%s", $rec['email']), ARRAY_A);
+            $existing = $db->get_row($db->prepare("SELECT * FROM $tbl WHERE email=%s", $rec['email']), ARRAY_A);
             if ($existing) {
                 if ($update_existing) {
                     $update = $rec;
@@ -356,7 +356,7 @@ final class Customers {
                     }
                     if (!empty($update)) {
                         $update['updated_at'] = \current_time('mysql');
-                        $wpdb->update($tbl, $update, ['id' => (int)$existing['id']]);
+                        $db->update($tbl, $update, ['id' => (int)$existing['id']]);
                         \do_action('arm_re_customer_saved', (int)$existing['id'], array_merge($existing, $update), 'import_csv');
                         $updated++;
                     }
@@ -364,19 +364,19 @@ final class Customers {
             } else {
                 $rec['created_at'] = \current_time('mysql');
                 $rec['updated_at'] = \current_time('mysql');
-                $wpdb->insert($tbl, $rec);
-                \do_action('arm_re_customer_saved', (int)$wpdb->insert_id, $rec, 'import_csv');
+                $db->insert($tbl, $rec);
+                \do_action('arm_re_customer_saved', (int)$db->insert_id, $rec, 'import_csv');
                 $inserted++;
             }
         }
         \fclose($fh);
 
-        \wp_redirect(\admin_url('admin.php?page=arm-repair-customers&action=import&imported=' . ($inserted + $updated)));
+        \redirect(\admin_url('admin.php?page=arm-repair-customers&action=import&imported=' . ($inserted + $updated)));
         exit;
     }
 
     public static function handle_import_crm(): void {
-        if (!\current_user_can('manage_options')) \wp_die('Nope');
+        if (!\current_user_can('manage_options')) \die('Nope');
         \check_admin_referer('arm_re_customer_import_crm');
 
         $contacts = \apply_filters('arm_re_crm_fetch_customers', []);
@@ -393,8 +393,8 @@ final class Customers {
             self::redirect_with_error(__('No contacts returned from CRM.', 'arm-repair-estimates'), 'import');
         }
 
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_customers';
+        global $db;
+        $tbl = $db->prefix . 'arm_customers';
         $count = 0;
 
         foreach ($contacts as $c) {
@@ -409,42 +409,42 @@ final class Customers {
             ];
             if (!$rec['email']) continue;
 
-            $exists_id = (int) $wpdb->get_var($wpdb->prepare("SELECT id FROM $tbl WHERE email=%s", $rec['email']));
+            $exists_id = (int) $db->get_var($db->prepare("SELECT id FROM $tbl WHERE email=%s", $rec['email']));
             $rec['updated_at'] = \current_time('mysql');
 
             if ($exists_id) {
-                $wpdb->update($tbl, $rec, ['id' => $exists_id]);
+                $db->update($tbl, $rec, ['id' => $exists_id]);
                 \do_action('arm_re_customer_saved', $exists_id, $rec, 'import_crm');
             } else {
                 $rec['created_at'] = \current_time('mysql');
-                $wpdb->insert($tbl, $rec);
-                \do_action('arm_re_customer_saved', (int) $wpdb->insert_id, $rec, 'import_crm');
+                $db->insert($tbl, $rec);
+                \do_action('arm_re_customer_saved', (int) $db->insert_id, $rec, 'import_crm');
             }
             $count++;
         }
 
         \do_action('arm_re_customers_imported', $count, 'crm');
 
-        \wp_redirect(\admin_url('admin.php?page=arm-repair-customers&action=import&imported=' . $count));
+        \redirect(\admin_url('admin.php?page=arm-repair-customers&action=import&imported=' . $count));
         exit;
     }
 
     /** ===== AJAX search for customers (admin use & estimate builder search) ===== */
     public static function ajax_search(): void {
         $nonce = $_REQUEST['_ajax_nonce'] ?? $_REQUEST['nonce'] ?? '';
-        if (!\wp_verify_nonce($nonce, 'arm_re_est_admin')) {
-            \wp_send_json_error(['error' => 'invalid_nonce'], 403);
+        if (!\verify_nonce($nonce, 'arm_re_est_admin')) {
+            \send_json_error(['error' => 'invalid_nonce'], 403);
         }
 
-        if (!\current_user_can('manage_options')) \wp_send_json_error(['error' => 'forbidden'], 403);
+        if (!\current_user_can('manage_options')) \send_json_error(['error' => 'forbidden'], 403);
         $term = isset($_REQUEST['q']) ? \sanitize_text_field($_REQUEST['q']) : '';
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_customers';
+        global $db;
+        $tbl = $db->prefix . 'arm_customers';
 
-        if ($term === '') \wp_send_json_success(['results' => []]);
+        if ($term === '') \send_json_success(['results' => []]);
 
-        $like = '%' . $wpdb->esc_like($term) . '%';
-        $rows = $wpdb->get_results($wpdb->prepare(
+        $like = '%' . $db->esc_like($term) . '%';
+        $rows = $db->get_results($db->prepare(
             "SELECT id, first_name, last_name, email, phone FROM $tbl
              WHERE first_name LIKE %s OR last_name LIKE %s OR email LIKE %s OR phone LIKE %s
              ORDER BY created_at DESC LIMIT 20",
@@ -463,7 +463,7 @@ final class Customers {
                 'phone' => $r->phone,
             ];
         }
-        \wp_send_json_success(['results' => $out]);
+        \send_json_success(['results' => $out]);
     }
 
     /** ===== Helpers ===== */
@@ -491,7 +491,7 @@ final class Customers {
         $args = ['page' => 'arm-repair-customers', 'error' => rawurlencode($msg)];
         if ($action) $args['action'] = $action;
         if ($id)     $args['id'] = $id;
-        \wp_redirect(\admin_url('admin.php?' . \http_build_query($args)));
+        \redirect(\admin_url('admin.php?' . \http_build_query($args)));
         exit;
     }
 }

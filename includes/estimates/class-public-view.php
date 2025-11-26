@@ -13,7 +13,7 @@ final class PublicView {
         add_action('template_redirect', [__CLASS__, 'maybe_render']);
 
         
-        add_action('wp_enqueue_scripts', [__CLASS__, 'maybe_enqueue_assets']);
+        add_action('enqueue_scripts', [__CLASS__, 'maybe_enqueue_assets']);
     }
 
     /** Enqueue CSS/JS only when viewing an estimate */
@@ -22,7 +22,7 @@ final class PublicView {
         if (!$token) return;
 
         
-        wp_enqueue_style(
+        enqueue_style(
             'arm-re-frontend',
             defined('ARM_RE_URL') ? ARM_RE_URL.'assets/css/arm-frontend.css' : plugins_url('/assets/css/arm-frontend.css', dirname(__FILE__,2)),
             [],
@@ -30,7 +30,7 @@ final class PublicView {
         );
 
         
-        wp_enqueue_script(
+        enqueue_script(
             'arm-re-estimate-public',
             defined('ARM_RE_URL') ? ARM_RE_URL.'assets/js/estimate-public.js' : plugins_url('/assets/js/estimate-public.js', dirname(__FILE__,2)),
             ['jquery'],
@@ -38,9 +38,9 @@ final class PublicView {
             true
         );
 
-        wp_localize_script('arm-re-estimate-public', 'ARM_RE_EST_PUBLIC', [
+        localize_script('arm-re-estimate-public', 'ARM_RE_EST_PUBLIC', [
             'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce'    => wp_create_nonce('arm_re_est_action'),
+            'nonce'    => create_nonce('arm_re_est_action'),
             'token'    => (string)$token,
             'i18n'     => [
                 'sig_required' => __('Please sign and type your name to approve the estimate.', 'arm-repair-estimates'),
@@ -58,29 +58,29 @@ final class PublicView {
         $token = get_query_var('arm_estimate');
         if (!$token) return;
 
-        global $wpdb;
-        $tblE = $wpdb->prefix.'arm_estimates';
-        $tblI = $wpdb->prefix.'arm_estimate_items';
-        $tblC = $wpdb->prefix.'arm_customers';
-        $tblJ = $wpdb->prefix.'arm_estimate_jobs';
+        global $db;
+        $tblE = $db->prefix.'arm_estimates';
+        $tblI = $db->prefix.'arm_estimate_items';
+        $tblC = $db->prefix.'arm_customers';
+        $tblJ = $db->prefix.'arm_estimate_jobs';
 
-        $est = $wpdb->get_row($wpdb->prepare("SELECT * FROM $tblE WHERE token=%s", $token));
-        if (!$est) { status_header(404); wp_die(__('Estimate not found.', 'arm-repair-estimates')); }
+        $est = $db->get_row($db->prepare("SELECT * FROM $tblE WHERE token=%s", $token));
+        if (!$est) { status_header(404); die(__('Estimate not found.', 'arm-repair-estimates')); }
 
 
-        $items = $wpdb->get_results($wpdb->prepare(
+        $items = $db->get_results($db->prepare(
             "SELECT * FROM $tblI WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC",
             (int)$est->id
         ));
-        $jobs = $wpdb->get_results($wpdb->prepare(
+        $jobs = $db->get_results($db->prepare(
             "SELECT * FROM $tblJ WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC",
             (int) $est->id
         ));
-        $cust = $wpdb->get_row($wpdb->prepare(
+        $cust = $db->get_row($db->prepare(
             "SELECT * FROM $tblC WHERE id=%d",
             (int)$est->customer_id
         ));
-        $terms = wp_kses_post(get_option('arm_re_terms_html', ''));
+        $terms = kses_post(get_option('arm_re_terms_html', ''));
 
 
         $technicians = Controller::get_technician_directory();

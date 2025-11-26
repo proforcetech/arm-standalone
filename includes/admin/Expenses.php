@@ -12,7 +12,7 @@ class Expenses
     public static function render(): void
     {
         if (!current_user_can(Transactions::capability())) {
-            wp_die(__('You do not have permission to access this screen.', 'arm-repair-estimates'));
+            die(__('You do not have permission to access this screen.', 'arm-repair-estimates'));
         }
 
         if (!empty($_GET['export']) && $_GET['export'] === 'csv') {
@@ -22,8 +22,8 @@ class Expenses
         $message = '';
         $message_type = 'success';
 
-        if (!empty($_POST['arm_expense_nonce']) && wp_verify_nonce($_POST['arm_expense_nonce'], 'arm_expense_save')) {
-            $data = wp_unslash($_POST);
+        if (!empty($_POST['arm_expense_nonce']) && verify_nonce($_POST['arm_expense_nonce'], 'arm_expense_save')) {
+            $data = unslash($_POST);
             $id = Transactions::save('expense', [
                 'id'               => $data['id'] ?? 0,
                 'transaction_date' => $data['transaction_date'] ?? '',
@@ -43,7 +43,7 @@ class Expenses
             }
         }
 
-        if (!empty($_GET['delete']) && !empty($_GET['_wpnonce']) && wp_verify_nonce($_GET['_wpnonce'], 'arm_expense_delete')) {
+        if (!empty($_GET['delete']) && !empty($_GET['_wpnonce']) && verify_nonce($_GET['_wpnonce'], 'arm_expense_delete')) {
             $deleted = Transactions::delete('expense', (int) $_GET['delete']);
             if ($deleted) {
                 $message = __('Expense deleted.', 'arm-repair-estimates');
@@ -60,9 +60,9 @@ class Expenses
         }
 
         $filters = [
-            'from'     => isset($_GET['from']) ? sanitize_text_field(wp_unslash($_GET['from'])) : '',
-            'to'       => isset($_GET['to']) ? sanitize_text_field(wp_unslash($_GET['to'])) : '',
-            'category' => isset($_GET['category']) ? sanitize_text_field(wp_unslash($_GET['category'])) : '',
+            'from'     => isset($_GET['from']) ? sanitize_text_field(unslash($_GET['from'])) : '',
+            'to'       => isset($_GET['to']) ? sanitize_text_field(unslash($_GET['to'])) : '',
+            'category' => isset($_GET['category']) ? sanitize_text_field(unslash($_GET['category'])) : '',
             'number'   => 100,
         ];
 
@@ -74,9 +74,9 @@ class Expenses
     private static function export(): void
     {
         $filters = [
-            'from'     => isset($_GET['from']) ? sanitize_text_field(wp_unslash($_GET['from'])) : '',
-            'to'       => isset($_GET['to']) ? sanitize_text_field(wp_unslash($_GET['to'])) : '',
-            'category' => isset($_GET['category']) ? sanitize_text_field(wp_unslash($_GET['category'])) : '',
+            'from'     => isset($_GET['from']) ? sanitize_text_field(unslash($_GET['from'])) : '',
+            'to'       => isset($_GET['to']) ? sanitize_text_field(unslash($_GET['to'])) : '',
+            'category' => isset($_GET['category']) ? sanitize_text_field(unslash($_GET['category'])) : '',
         ];
 
         $rows = Transactions::query('expense', array_filter($filters));
@@ -95,7 +95,7 @@ class Expenses
                 $row['category'],
                 number_format((float) $row['amount'], 2, '.', ''),
                 $row['reference'],
-                wp_strip_all_tags($row['description']),
+                strip_all_tags($row['description']),
             ]);
         }
         fclose($output);

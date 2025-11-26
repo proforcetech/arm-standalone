@@ -16,9 +16,9 @@ final class Hooks_Make
         $hook = get_option('arm_make_calendar_webhook', '');
         if (!$hook) return;
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_appointments';
-        $row   = $wpdb->get_row($wpdb->prepare("SELECT * FROM $table WHERE id=%d", $appointment_id));
+        global $db;
+        $table = $db->prefix . 'arm_appointments';
+        $row   = $db->get_row($db->prepare("SELECT * FROM $table WHERE id=%d", $appointment_id));
         if (!$row) return;
 
         if (!$start) $start = (string) ($row->start_datetime ?? '');
@@ -27,10 +27,10 @@ final class Hooks_Make
             $estimate_id = (int) ($row->estimate_id ?? 0);
         }
 
-        wp_remote_post($hook, [
+        remote_post($hook, [
             'timeout' => 8,
             'headers' => ['Content-Type' => 'application/json'],
-            'body'    => wp_json_encode([
+            'body'    => json_encode([
                 'type'       => 'appointment.created',
                 'id'         => (int) $appointment_id,
                 'estimateId' => (int) $estimate_id,

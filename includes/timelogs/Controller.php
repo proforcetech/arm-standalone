@@ -1,8 +1,8 @@
 <?php
 namespace ARM\TimeLogs;
 
-use WP_Error;
-use wpdb;
+use Error;
+use db;
 
 if (!defined('ABSPATH')) exit;
 
@@ -19,14 +19,14 @@ final class Controller
 
     public static function install_tables(): void
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return;
         }
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-        $charset            = $wpdb->get_charset_collate();
+        $charset            = $db->get_charset_collate();
         $time_entries_table = self::table_entries();
         $time_adjust_table  = self::table_adjustments();
 
@@ -73,14 +73,14 @@ final class Controller
 
     public static function table_entries(): string
     {
-        global $wpdb;
-        return $wpdb->prefix . 'arm_time_entries';
+        global $db;
+        return $db->prefix . 'arm_time_entries';
     }
 
     public static function table_adjustments(): string
     {
-        global $wpdb;
-        return $wpdb->prefix . 'arm_time_adjustments';
+        global $db;
+        return $db->prefix . 'arm_time_adjustments';
     }
 
     private static function encode_location($location): ?string
@@ -90,7 +90,7 @@ final class Controller
             return null;
         }
 
-        $json = wp_json_encode($normalized);
+        $json = json_encode($normalized);
         return is_string($json) ? $json : null;
     }
 
@@ -225,23 +225,23 @@ final class Controller
 
     public static function start_entry(int $job_id, int $user_id, string $source = 'technician', string $note = '', array $location = [])
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
-            return new WP_Error('arm_time_db', __('Database connection not available.', 'arm-repair-estimates'));
+        global $db;
+        if (!$db instanceof db) {
+            return new Error('arm_time_db', __('Database connection not available.', 'arm-repair-estimates'));
         }
 
         $job = self::get_job($job_id);
         if (!$job) {
-            return new WP_Error('arm_time_job_missing', __('Job not found.', 'arm-repair-estimates'), ['status' => 404]);
+            return new Error('arm_time_job_missing', __('Job not found.', 'arm-repair-estimates'), ['status' => 404]);
         }
 
         if (!self::user_can_track_job($user_id, $job)) {
-            return new WP_Error('arm_time_forbidden', __('You are not allowed to log time for this job.', 'arm-repair-estimates'), ['status' => 403]);
+            return new Error('arm_time_forbidden', __('You are not allowed to log time for this job.', 'arm-repair-estimates'), ['status' => 403]);
         }
 
         $existing_open = self::get_user_open_entry($user_id);
         if ($existing_open && (int) $existing_open['job_id'] !== $job_id) {
-            return new WP_Error(
+            return new Error(
                 'arm_time_active_job',
                 __('You are currently tracking time on another job. Please stop it before starting a new one.', 'arm-repair-estimates'),
                 ['status' => 409]
@@ -250,7 +250,7 @@ final class Controller
 
         $open_entry = self::get_open_entry($job_id, $user_id);
         if ($open_entry) {
-            return new WP_Error('arm_time_already_open', __('A time entry is already running for this job.', 'arm-repair-estimates'), ['status' => 409]);
+            return new Error('arm_time_already_open', __('A time entry is already running for this job.', 'arm-repair-estimates'), ['status' => 409]);
         }
 
         $now = current_time('mysql');
@@ -277,11 +277,11 @@ final class Controller
             $formats[] = '%s';
         }
 
-        if (!$wpdb->insert(self::table_entries(), $data, $formats)) {
-            return new WP_Error('arm_time_insert_failed', __('Unable to start time entry.', 'arm-repair-estimates'));
+        if (!$db->insert(self::table_entries(), $data, $formats)) {
+            return new Error('arm_time_insert_failed', __('Unable to start time entry.', 'arm-repair-estimates'));
         }
 
-        $entry_id = (int) $wpdb->insert_id;
+        $entry_id = (int) $db->insert_id;
         $entry    = self::get_entry($entry_id);
 
         self::log_audit('time_entry', $entry_id, 'started', $user_id, [
@@ -300,7 +300,7 @@ final class Controller
     {
         $entry = self::get_open_entry($job_id, $user_id);
         if (!$entry) {
-            return new WP_Error('arm_time_not_running', __('No running time entry found for this job.', 'arm-repair-estimates'), ['status' => 404]);
+            return new Error('arm_time_not_running', __('No running time entry found for this job.', 'arm-repair-estimates'), ['status' => 404]);
         }
 
         return self::close_entry((int) $entry['id'], $user_id, false, $location);
@@ -308,22 +308,22 @@ final class Controller
 
     public static function close_entry(int $entry_id, int $user_id, bool $force = false, array $location = [])
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
-            return new WP_Error('arm_time_db', __('Database connection not available.', 'arm-repair-estimates'));
+        global $db;
+        if (!$db instanceof db) {
+            return new Error('arm_time_db', __('Database connection not available.', 'arm-repair-estimates'));
         }
 
         $entry = self::get_entry($entry_id);
         if (!$entry) {
-            return new WP_Error('arm_time_entry_missing', __('Time entry not found.', 'arm-repair-estimates'), ['status' => 404]);
+            return new Error('arm_time_entry_missing', __('Time entry not found.', 'arm-repair-estimates'), ['status' => 404]);
         }
 
         if (!$force && (int) $entry['technician_id'] !== $user_id && !current_user_can('manage_options')) {
-            return new WP_Error('arm_time_forbidden', __('You are not allowed to update this entry.', 'arm-repair-estimates'), ['status' => 403]);
+            return new Error('arm_time_forbidden', __('You are not allowed to update this entry.', 'arm-repair-estimates'), ['status' => 403]);
         }
 
         if ($entry['end_at']) {
-            return new WP_Error('arm_time_already_closed', __('This time entry has already been completed.', 'arm-repair-estimates'), ['status' => 409]);
+            return new Error('arm_time_already_closed', __('This time entry has already been completed.', 'arm-repair-estimates'), ['status' => 409]);
         }
 
         $now       = current_time('mysql');
@@ -345,7 +345,7 @@ final class Controller
             $update_formats[] = '%s';
         }
 
-        $updated = $wpdb->update(
+        $updated = $db->update(
             self::table_entries(),
             $update_data,
             ['id' => $entry_id],
@@ -354,7 +354,7 @@ final class Controller
         );
 
         if ($updated === false) {
-            return new WP_Error('arm_time_update_failed', __('Unable to finish time entry.', 'arm-repair-estimates'));
+            return new Error('arm_time_update_failed', __('Unable to finish time entry.', 'arm-repair-estimates'));
         }
 
         $entry = self::get_entry($entry_id);
@@ -373,14 +373,14 @@ final class Controller
 
     public static function update_entry(int $entry_id, array $data, int $admin_id, string $reason = '')
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
-            return new WP_Error('arm_time_db', __('Database connection not available.', 'arm-repair-estimates'));
+        global $db;
+        if (!$db instanceof db) {
+            return new Error('arm_time_db', __('Database connection not available.', 'arm-repair-estimates'));
         }
 
         $current = self::get_entry($entry_id);
         if (!$current) {
-            return new WP_Error('arm_time_entry_missing', __('Time entry not found.', 'arm-repair-estimates'), ['status' => 404]);
+            return new Error('arm_time_entry_missing', __('Time entry not found.', 'arm-repair-estimates'), ['status' => 404]);
         }
 
         $set   = [];
@@ -423,7 +423,7 @@ final class Controller
         }
 
         if (!$set) {
-            return new WP_Error('arm_time_nothing_to_update', __('No changes supplied.', 'arm-repair-estimates'));
+            return new Error('arm_time_nothing_to_update', __('No changes supplied.', 'arm-repair-estimates'));
         }
 
         $set[]    = 'updated_at = %s';
@@ -431,14 +431,14 @@ final class Controller
         $params[] = $entry_id;
 
         $sql = 'UPDATE ' . self::table_entries() . ' SET ' . implode(', ', $set) . ' WHERE id = %d';
-        $prepared = $wpdb->prepare($sql, $params);
+        $prepared = $db->prepare($sql, $params);
         if ($prepared === false) {
-            return new WP_Error('arm_time_update_failed', __('Unable to update the time entry.', 'arm-repair-estimates'));
+            return new Error('arm_time_update_failed', __('Unable to update the time entry.', 'arm-repair-estimates'));
         }
 
-        $result = $wpdb->query($prepared);
+        $result = $db->query($prepared);
         if ($result === false) {
-            return new WP_Error('arm_time_update_failed', __('Unable to update the time entry.', 'arm-repair-estimates'));
+            return new Error('arm_time_update_failed', __('Unable to update the time entry.', 'arm-repair-estimates'));
         }
 
         $updated = self::get_entry($entry_id);
@@ -451,18 +451,18 @@ final class Controller
 
     public static function create_manual_entry(int $job_id, int $technician_id, string $start_at, ?string $end_at, string $notes, int $admin_id, string $reason = '')
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
-            return new WP_Error('arm_time_db', __('Database connection not available.', 'arm-repair-estimates'));
+        global $db;
+        if (!$db instanceof db) {
+            return new Error('arm_time_db', __('Database connection not available.', 'arm-repair-estimates'));
         }
 
         $job = self::get_job($job_id);
         if (!$job) {
-            return new WP_Error('arm_time_job_missing', __('Job not found.', 'arm-repair-estimates'), ['status' => 404]);
+            return new Error('arm_time_job_missing', __('Job not found.', 'arm-repair-estimates'), ['status' => 404]);
         }
 
         if (!get_userdata($technician_id)) {
-            return new WP_Error('arm_time_user_missing', __('Technician account not found.', 'arm-repair-estimates'), ['status' => 404]);
+            return new Error('arm_time_user_missing', __('Technician account not found.', 'arm-repair-estimates'), ['status' => 404]);
         }
 
         $duration = null;
@@ -470,7 +470,7 @@ final class Controller
             $start_ts = strtotime($start_at);
             $end_ts   = strtotime($end_at);
             if ($start_ts === false || $end_ts === false || $end_ts < $start_ts) {
-                return new WP_Error('arm_time_invalid_range', __('The end time must be after the start time.', 'arm-repair-estimates'), ['status' => 400]);
+                return new Error('arm_time_invalid_range', __('The end time must be after the start time.', 'arm-repair-estimates'), ['status' => 400]);
             }
             $duration = max(1, (int) floor(($end_ts - $start_ts) / 60));
         }
@@ -502,11 +502,11 @@ final class Controller
             $formats[] = '%d';
         }
 
-        if (!$wpdb->insert(self::table_entries(), $data, $formats)) {
-            return new WP_Error('arm_time_insert_failed', __('Unable to create the time entry.', 'arm-repair-estimates'));
+        if (!$db->insert(self::table_entries(), $data, $formats)) {
+            return new Error('arm_time_insert_failed', __('Unable to create the time entry.', 'arm-repair-estimates'));
         }
 
-        $entry_id = (int) $wpdb->insert_id;
+        $entry_id = (int) $db->insert_id;
         $entry    = self::get_entry($entry_id);
 
         if ($entry) {
@@ -518,13 +518,13 @@ final class Controller
 
     public static function get_entry(int $entry_id): ?array
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return null;
         }
 
-        $row = $wpdb->get_row(
-            $wpdb->prepare('SELECT * FROM ' . self::table_entries() . ' WHERE id = %d', $entry_id),
+        $row = $db->get_row(
+            $db->prepare('SELECT * FROM ' . self::table_entries() . ' WHERE id = %d', $entry_id),
             ARRAY_A
         );
 
@@ -537,13 +537,13 @@ final class Controller
 
     public static function get_open_entry(int $job_id, int $user_id): ?array
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return null;
         }
 
-        $row = $wpdb->get_row(
-            $wpdb->prepare(
+        $row = $db->get_row(
+            $db->prepare(
                 'SELECT * FROM ' . self::table_entries() . ' WHERE job_id = %d AND technician_id = %d AND end_at IS NULL ORDER BY start_at DESC LIMIT 1',
                 $job_id,
                 $user_id
@@ -556,13 +556,13 @@ final class Controller
 
     public static function get_job_totals(int $job_id, int $user_id): array
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return ['minutes' => 0, 'formatted' => '0:00', 'open_entry' => null];
         }
 
-        $minutes = (int) $wpdb->get_var(
-            $wpdb->prepare(
+        $minutes = (int) $db->get_var(
+            $db->prepare(
                 'SELECT COALESCE(SUM(duration_minutes),0) FROM ' . self::table_entries() . ' WHERE job_id = %d AND technician_id = %d AND duration_minutes IS NOT NULL',
                 $job_id,
                 $user_id
@@ -583,13 +583,13 @@ final class Controller
 
     public static function get_open_entries_for_user(int $user_id): array
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return [];
         }
 
-        $rows = $wpdb->get_results(
-            $wpdb->prepare(
+        $rows = $db->get_results(
+            $db->prepare(
                 'SELECT * FROM ' . self::table_entries() . ' WHERE technician_id = %d AND end_at IS NULL ORDER BY start_at ASC',
                 $user_id
             ),
@@ -611,13 +611,13 @@ final class Controller
 
     public static function get_total_minutes_for_technician(int $user_id): int
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return 0;
         }
 
-        $minutes = (int) $wpdb->get_var(
-            $wpdb->prepare(
+        $minutes = (int) $db->get_var(
+            $db->prepare(
                 'SELECT COALESCE(SUM(duration_minutes),0) FROM ' . self::table_entries() . ' WHERE technician_id = %d AND duration_minutes IS NOT NULL',
                 $user_id
             )
@@ -639,16 +639,16 @@ final class Controller
             return $column;
         }
 
-        global $wpdb;
+        global $db;
         $column = 'qty';
-        if (!$wpdb instanceof wpdb) {
+        if (!$db instanceof db) {
             return $column;
         }
 
-        $table = $wpdb->prefix . 'arm_invoice_items';
+        $table = $db->prefix . 'arm_invoice_items';
 
-        $qty_exists = $wpdb->get_var(
-            $wpdb->prepare(
+        $qty_exists = $db->get_var(
+            $db->prepare(
                 "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = 'qty' LIMIT 1",
                 $table
             )
@@ -659,8 +659,8 @@ final class Controller
             return $column;
         }
 
-        $hours_exists = $wpdb->get_var(
-            $wpdb->prepare(
+        $hours_exists = $db->get_var(
+            $db->prepare(
                 "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = 'hours' LIMIT 1",
                 $table
             )
@@ -675,14 +675,14 @@ final class Controller
 
     public static function get_billable_hours_for_technician(int $user_id): float
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return 0.0;
         }
 
-        $invoice_items = $wpdb->prefix . 'arm_invoice_items';
-        $invoices      = $wpdb->prefix . 'arm_invoices';
-        $estimates     = $wpdb->prefix . 'arm_estimates';
+        $invoice_items = $db->prefix . 'arm_invoice_items';
+        $invoices      = $db->prefix . 'arm_invoices';
+        $estimates     = $db->prefix . 'arm_estimates';
         $column        = self::get_invoice_hours_column();
 
         $sql = "SELECT COALESCE(SUM(ii.$column), 0)
@@ -693,7 +693,7 @@ final class Controller
                   AND e.technician_id = %d
                   AND (i.status IS NULL OR i.status <> %s)";
 
-        $value = $wpdb->get_var($wpdb->prepare($sql, 'LABOR', $user_id, 'VOID'));
+        $value = $db->get_var($db->prepare($sql, 'LABOR', $user_id, 'VOID'));
 
         if ($value === null) {
             return 0.0;
@@ -727,16 +727,16 @@ final class Controller
 
     public static function get_job(int $job_id)
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return null;
         }
 
-        $jobs      = $wpdb->prefix . 'arm_estimate_jobs';
-        $estimates = $wpdb->prefix . 'arm_estimates';
+        $jobs      = $db->prefix . 'arm_estimate_jobs';
+        $estimates = $db->prefix . 'arm_estimates';
 
-        return $wpdb->get_row(
-            $wpdb->prepare(
+        return $db->get_row(
+            $db->prepare(
                 "SELECT j.*, e.technician_id AS estimate_technician, e.estimate_no, e.status AS estimate_status FROM $jobs j INNER JOIN $estimates e ON e.id = j.estimate_id WHERE j.id = %d",
                 $job_id
             )
@@ -745,14 +745,14 @@ final class Controller
 
     public static function get_jobs_for_technician(int $user_id): array
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return [];
         }
 
-        $jobs      = $wpdb->prefix . 'arm_estimate_jobs';
-        $estimates = $wpdb->prefix . 'arm_estimates';
-        $customers = $wpdb->prefix . 'arm_customers';
+        $jobs      = $db->prefix . 'arm_estimate_jobs';
+        $estimates = $db->prefix . 'arm_estimates';
+        $customers = $db->prefix . 'arm_customers';
 
         $sql = "SELECT j.id AS job_id, j.title, j.status AS job_status, j.estimate_id, e.estimate_no, e.status AS estimate_status, e.customer_id, c.first_name, c.last_name
                 FROM $jobs j
@@ -761,13 +761,13 @@ final class Controller
                 WHERE j.technician_id = %d
                 ORDER BY e.created_at DESC";
 
-        return $wpdb->get_results($wpdb->prepare($sql, $user_id), ARRAY_A) ?: [];
+        return $db->get_results($db->prepare($sql, $user_id), ARRAY_A) ?: [];
     }
 
     public static function record_adjustment(int $entry_id, int $admin_id, string $action, array $previous, array $next, string $reason = ''): void
     {
-        global $wpdb;
-        if (!$wpdb instanceof wpdb) {
+        global $db;
+        if (!$db instanceof db) {
             return;
         }
 
@@ -806,9 +806,9 @@ final class Controller
         }
 
         $sql = 'INSERT INTO ' . self::table_adjustments() . ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $placeholders) . ')';
-        $prepared = $params ? $wpdb->prepare($sql, $params) : $sql;
+        $prepared = $params ? $db->prepare($sql, $params) : $sql;
         if ($prepared !== false) {
-            $wpdb->query($prepared);
+            $db->query($prepared);
         }
 
         self::log_audit('time_entry', $entry_id, 'adjusted', $admin_id, [

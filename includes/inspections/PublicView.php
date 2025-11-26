@@ -44,7 +44,7 @@ class PublicView
         if (!empty($_GET['inspection_submitted'])) {
             $success_message = __('Inspection submitted successfully.', 'arm-repair-estimates');
             if (!empty($_GET['inspection_token'])) {
-                $share_token = sanitize_text_field(wp_unslash($_GET['inspection_token']));
+                $share_token = sanitize_text_field(unslash($_GET['inspection_token']));
             }
         }
 
@@ -61,7 +61,7 @@ class PublicView
                 </div>
             <?php endif; ?>
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="arm-inspection-fields">
-                <?php wp_nonce_field('arm_re_submit_inspection'); ?>
+                <?php nonce_field('arm_re_submit_inspection'); ?>
                 <input type="hidden" name="action" value="arm_re_submit_inspection">
                 <input type="hidden" name="template_id" value="<?php echo (int) $template['id']; ?>">
                 <div class="arm-field-group">
@@ -87,7 +87,7 @@ class PublicView
 
                 <h3><?php echo esc_html($template['name']); ?></h3>
                 <?php if (!empty($template['description'])): ?>
-                    <div class="description"><?php echo wpautop(wp_kses_post($template['description'])); ?></div>
+                    <div class="description"><?php echo wpautop(kses_post($template['description'])); ?></div>
                 <?php endif; ?>
 
                 <div class="arm-items">
@@ -95,7 +95,7 @@ class PublicView
                         <div class="arm-item">
                             <label><strong><?php echo esc_html($item['label']); ?></strong></label>
                             <?php if (!empty($item['description'])): ?>
-                                <div class="description"><?php echo wpautop(wp_kses_post($item['description'])); ?></div>
+                                <div class="description"><?php echo wpautop(kses_post($item['description'])); ?></div>
                             <?php endif; ?>
                             <?php echo self::render_item_input($item); ?>
                             <?php if (!empty($item['include_notes'])): ?>

@@ -31,30 +31,30 @@ class Controller {
     /** ------------------------- Entry points ------------------------ */
 
     public static function admin_pdf_estimate() {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('manage_options')) die('Nope');
         check_admin_referer('arm_re_pdf_estimate');
         $id = (int)($_GET['id'] ?? 0);
-        if (!$id) wp_die('Missing estimate id');
+        if (!$id) die('Missing estimate id');
 
         $html = self::render_estimate_html_by_id($id);
         self::stream_pdf_or_html($html, "estimate-$id.pdf");
     }
 
     public static function admin_pdf_invoice() {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('manage_options')) die('Nope');
         check_admin_referer('arm_re_pdf_invoice');
         $id = (int)($_GET['id'] ?? 0);
-        if (!$id) wp_die('Missing invoice id');
+        if (!$id) die('Missing invoice id');
 
         $html = self::render_invoice_html_by_id($id);
         self::stream_pdf_or_html($html, "invoice-$id.pdf");
     }
 
     public static function admin_pdf_inspection() {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('manage_options')) die('Nope');
         check_admin_referer('arm_re_pdf_inspection');
         $id = (int)($_GET['id'] ?? 0);
-        if (!$id) wp_die('Missing inspection id');
+        if (!$id) die('Missing inspection id');
 
         $html = self::render_inspection_html_by_id($id);
         self::stream_pdf_or_html($html, "inspection-$id.pdf");
@@ -84,7 +84,7 @@ class Controller {
     public static function shop_header_html() {
         $logo = esc_url(get_option('arm_re_logo_url',''));
         $name = esc_html(get_option('arm_re_shop_name',''));
-        $addr = wp_kses_post(get_option('arm_re_shop_address',''));
+        $addr = kses_post(get_option('arm_re_shop_address',''));
         $phone= esc_html(get_option('arm_re_shop_phone',''));
         $email= esc_html(get_option('arm_re_shop_email',''));
 
@@ -111,65 +111,65 @@ class Controller {
     }
 
     private static function render_estimate_html_by_id($id) {
-        global $wpdb;
-        $eT = $wpdb->prefix.'arm_estimates';
-        $iT = $wpdb->prefix.'arm_estimate_items';
-        $jT = $wpdb->prefix.'arm_estimate_jobs';
-        $cT = $wpdb->prefix.'arm_customers';
-        $est = $wpdb->get_row($wpdb->prepare("SELECT * FROM $eT WHERE id=%d", $id));
-        if (!$est) wp_die('Estimate not found');
+        global $db;
+        $eT = $db->prefix.'arm_estimates';
+        $iT = $db->prefix.'arm_estimate_items';
+        $jT = $db->prefix.'arm_estimate_jobs';
+        $cT = $db->prefix.'arm_customers';
+        $est = $db->get_row($db->prepare("SELECT * FROM $eT WHERE id=%d", $id));
+        if (!$est) die('Estimate not found');
 
-        $items = $wpdb->get_results($wpdb->prepare("SELECT * FROM $iT WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $est->id));
-        $jobs  = $wpdb->get_results($wpdb->prepare("SELECT * FROM $jT WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $est->id));
-        $cust  = $wpdb->get_row($wpdb->prepare("SELECT * FROM $cT WHERE id=%d", $est->customer_id));
+        $items = $db->get_results($db->prepare("SELECT * FROM $iT WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $est->id));
+        $jobs  = $db->get_results($db->prepare("SELECT * FROM $jT WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $est->id));
+        $cust  = $db->get_row($db->prepare("SELECT * FROM $cT WHERE id=%d", $est->customer_id));
         return self::estimate_html($est, $items, $cust, $jobs);
     }
 
     private static function render_estimate_html_by_token($token) {
-        global $wpdb;
-        $eT = $wpdb->prefix.'arm_estimates';
-        $iT = $wpdb->prefix.'arm_estimate_items';
-        $jT = $wpdb->prefix.'arm_estimate_jobs';
-        $cT = $wpdb->prefix.'arm_customers';
-        $est = $wpdb->get_row($wpdb->prepare("SELECT * FROM $eT WHERE token=%s", $token));
-        if (!$est) wp_die('Estimate not found');
+        global $db;
+        $eT = $db->prefix.'arm_estimates';
+        $iT = $db->prefix.'arm_estimate_items';
+        $jT = $db->prefix.'arm_estimate_jobs';
+        $cT = $db->prefix.'arm_customers';
+        $est = $db->get_row($db->prepare("SELECT * FROM $eT WHERE token=%s", $token));
+        if (!$est) die('Estimate not found');
 
-        $items = $wpdb->get_results($wpdb->prepare("SELECT * FROM $iT WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $est->id));
-        $jobs  = $wpdb->get_results($wpdb->prepare("SELECT * FROM $jT WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $est->id));
-        $cust  = $wpdb->get_row($wpdb->prepare("SELECT * FROM $cT WHERE id=%d", $est->customer_id));
+        $items = $db->get_results($db->prepare("SELECT * FROM $iT WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $est->id));
+        $jobs  = $db->get_results($db->prepare("SELECT * FROM $jT WHERE estimate_id=%d ORDER BY sort_order ASC, id ASC", $est->id));
+        $cust  = $db->get_row($db->prepare("SELECT * FROM $cT WHERE id=%d", $est->customer_id));
         return self::estimate_html($est, $items, $cust, $jobs);
     }
 
     private static function render_invoice_html_by_id($id) {
-        global $wpdb;
-        $iT  = $wpdb->prefix.'arm_invoices';
-        $itT = $wpdb->prefix.'arm_invoice_items';
-        $cT  = $wpdb->prefix.'arm_customers';
-        $inv = $wpdb->get_row($wpdb->prepare("SELECT * FROM $iT WHERE id=%d", $id));
-        if (!$inv) wp_die('Invoice not found');
+        global $db;
+        $iT  = $db->prefix.'arm_invoices';
+        $itT = $db->prefix.'arm_invoice_items';
+        $cT  = $db->prefix.'arm_customers';
+        $inv = $db->get_row($db->prepare("SELECT * FROM $iT WHERE id=%d", $id));
+        if (!$inv) die('Invoice not found');
 
-        $items = $wpdb->get_results($wpdb->prepare("SELECT * FROM $itT WHERE invoice_id=%d ORDER BY sort_order ASC, id ASC", $inv->id));
-        $cust  = $wpdb->get_row($wpdb->prepare("SELECT * FROM $cT WHERE id=%d", $inv->customer_id));
+        $items = $db->get_results($db->prepare("SELECT * FROM $itT WHERE invoice_id=%d ORDER BY sort_order ASC, id ASC", $inv->id));
+        $cust  = $db->get_row($db->prepare("SELECT * FROM $cT WHERE id=%d", $inv->customer_id));
         return self::invoice_html($inv, $items, $cust);
     }
 
     private static function render_invoice_html_by_token($token) {
-        global $wpdb;
-        $iT  = $wpdb->prefix.'arm_invoices';
-        $itT = $wpdb->prefix.'arm_invoice_items';
-        $cT  = $wpdb->prefix.'arm_customers';
-        $inv = $wpdb->get_row($wpdb->prepare("SELECT * FROM $iT WHERE token=%s", $token));
-        if (!$inv) wp_die('Invoice not found');
+        global $db;
+        $iT  = $db->prefix.'arm_invoices';
+        $itT = $db->prefix.'arm_invoice_items';
+        $cT  = $db->prefix.'arm_customers';
+        $inv = $db->get_row($db->prepare("SELECT * FROM $iT WHERE token=%s", $token));
+        if (!$inv) die('Invoice not found');
 
-        $items = $wpdb->get_results($wpdb->prepare("SELECT * FROM $itT WHERE invoice_id=%d ORDER BY sort_order ASC, id ASC", $inv->id));
-        $cust  = $wpdb->get_row($wpdb->prepare("SELECT * FROM $cT WHERE id=%d", $inv->customer_id));
+        $items = $db->get_results($db->prepare("SELECT * FROM $itT WHERE invoice_id=%d ORDER BY sort_order ASC, id ASC", $inv->id));
+        $cust  = $db->get_row($db->prepare("SELECT * FROM $cT WHERE id=%d", $inv->customer_id));
         return self::invoice_html($inv, $items, $cust);
     }
 
     private static function render_inspection_html_by_id($id) {
         $inspection = \ARM\Inspections\Reports::get_with_details((int) $id);
         if (!$inspection) {
-            wp_die('Inspection not found');
+            die('Inspection not found');
         }
         return \ARM\Inspections\Reports::render_html($inspection);
     }
@@ -177,7 +177,7 @@ class Controller {
     private static function render_inspection_html_by_token($token) {
         $inspection = \ARM\Inspections\Reports::get_by_token((string) $token);
         if (!$inspection) {
-            wp_die('Inspection not found');
+            die('Inspection not found');
         }
         return \ARM\Inspections\Reports::render_html($inspection);
     }
@@ -186,7 +186,7 @@ class Controller {
 
     private static function estimate_html($est, $items, $cust, $jobs = []) {
         $header = self::shop_header_html();
-        $terms  = wp_kses_post(get_option('arm_re_terms_html',''));
+        $terms  = kses_post(get_option('arm_re_terms_html',''));
         $technicians = \ARM\Estimates\Controller::get_technician_directory();
         $assigned_label = '';
         if (!empty($est->technician_id) && isset($technicians[(int) $est->technician_id])) {
@@ -273,7 +273,7 @@ class Controller {
 
         <?php if (!empty($est->notes)): ?>
           <h3><?php _e('Notes','arm-repair-estimates'); ?></h3>
-          <div><?php echo wpautop(wp_kses_post($est->notes)); ?></div>
+          <div><?php echo wpautop(kses_post($est->notes)); ?></div>
         <?php endif; ?>
 
         <?php if ($terms): ?>

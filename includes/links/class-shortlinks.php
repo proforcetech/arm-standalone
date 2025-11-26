@@ -23,10 +23,10 @@ final class Shortlinks {
 
     /** DB table */
     public static function install_tables(): void {
-        global $wpdb;
+        global $db;
         require_once ABSPATH.'wp-admin/includes/upgrade.php';
-        $tbl = $wpdb->prefix.'arm_shortlinks';
-        $charset = $wpdb->get_charset_collate();
+        $tbl = $db->prefix.'arm_shortlinks';
+        $charset = $db->get_charset_collate();
         dbDelta("CREATE TABLE $tbl (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             kind ENUM('EST','INV') NOT NULL,
@@ -58,11 +58,11 @@ final class Shortlinks {
 
         $row = self::find_by_code($code);
         if ($row && !empty($row->target_url)) {
-            wp_safe_redirect($row->target_url, 302);
+            safe_redirect($row->target_url, 302);
             exit;
         }
         status_header(404);
-        wp_die(esc_html__('Link not found.', 'arm-repair-estimates'));
+        die(esc_html__('Link not found.', 'arm-repair-estimates'));
     }
 
     /** === Public API ===================================================== */
@@ -92,55 +92,55 @@ final class Shortlinks {
     /** === Admin helpers (optional buttons you can link to) =============== */
 
     public static function admin_make_est_short(): void {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('manage_options')) die('Nope');
         check_admin_referer('arm_make_est_short');
         $id = (int)($_GET['id'] ?? 0);
-        if (!$id) wp_die('Missing id');
+        if (!$id) die('Missing id');
 
-        global $wpdb;
-        $tblE = $wpdb->prefix.'arm_estimates';
-        $est  = $wpdb->get_row($wpdb->prepare("SELECT id, token FROM $tblE WHERE id=%d", $id));
-        if (!$est) wp_die('Estimate not found');
+        global $db;
+        $tblE = $db->prefix.'arm_estimates';
+        $est  = $db->get_row($db->prepare("SELECT id, token FROM $tblE WHERE id=%d", $id));
+        if (!$est) die('Estimate not found');
         $short = self::get_or_create_for_estimate((int)$est->id, (string)$est->token);
 
-        wp_safe_redirect(add_query_arg(['short_created'=>1,'short'=>$short], admin_url('admin.php?page=arm-repair-estimates-builder&action=edit&id='.$id)));
+        safe_redirect(add_query_arg(['short_created'=>1,'short'=>$short], admin_url('admin.php?page=arm-repair-estimates-builder&action=edit&id='.$id)));
         exit;
     }
 
     public static function admin_make_inv_short(): void {
-        if (!current_user_can('manage_options')) wp_die('Nope');
+        if (!current_user_can('manage_options')) die('Nope');
         check_admin_referer('arm_make_inv_short');
         $id = (int)($_GET['id'] ?? 0);
-        if (!$id) wp_die('Missing id');
+        if (!$id) die('Missing id');
 
-        global $wpdb;
-        $tblI = $wpdb->prefix.'arm_invoices';
-        $inv  = $wpdb->get_row($wpdb->prepare("SELECT id, token FROM $tblI WHERE id=%d", $id));
-        if (!$inv) wp_die('Invoice not found');
+        global $db;
+        $tblI = $db->prefix.'arm_invoices';
+        $inv  = $db->get_row($db->prepare("SELECT id, token FROM $tblI WHERE id=%d", $id));
+        if (!$inv) die('Invoice not found');
         $short = self::get_or_create_for_invoice((int)$inv->id, (string)$inv->token);
 
-        wp_safe_redirect(add_query_arg(['short_created'=>1,'short'=>$short], admin_url('admin.php?page=arm-repair-invoices')));
+        safe_redirect(add_query_arg(['short_created'=>1,'short'=>$short], admin_url('admin.php?page=arm-repair-invoices')));
         exit;
     }
 
     /** === Internals ====================================================== */
 
     private static function find_by_code(string $code) {
-        global $wpdb;
-        $tbl = $wpdb->prefix.'arm_shortlinks';
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM $tbl WHERE code=%s", $code));
+        global $db;
+        $tbl = $db->prefix.'arm_shortlinks';
+        return $db->get_row($db->prepare("SELECT * FROM $tbl WHERE code=%s", $code));
     }
 
     private static function find_by_kind_obj(string $kind, int $object_id) {
-        global $wpdb;
-        $tbl = $wpdb->prefix.'arm_shortlinks';
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM $tbl WHERE kind=%s AND object_id=%d", $kind, $object_id));
+        global $db;
+        $tbl = $db->prefix.'arm_shortlinks';
+        return $db->get_row($db->prepare("SELECT * FROM $tbl WHERE kind=%s AND object_id=%d", $kind, $object_id));
     }
 
     private static function store(string $kind, int $object_id, string $code, string $target_url): void {
-        global $wpdb;
-        $tbl = $wpdb->prefix.'arm_shortlinks';
-        $wpdb->insert($tbl, [
+        global $db;
+        $tbl = $db->prefix.'arm_shortlinks';
+        $db->insert($tbl, [
             'kind'       => $kind,
             'object_id'  => $object_id,
             'code'       => $code,

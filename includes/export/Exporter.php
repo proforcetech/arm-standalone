@@ -8,9 +8,9 @@ class Exporter {
         add_action('admin_post_arm_re_export_requests', [__CLASS__,'export_requests']);
     }
     public static function export_requests() {
-        if (!current_user_can('manage_options')) wp_die('Nope');
-        global $wpdb; $tbl = $wpdb->prefix.'arm_estimate_requests';
-        $rows = $wpdb->get_results("SELECT * FROM $tbl ORDER BY created_at DESC", ARRAY_A);
+        if (!current_user_can('manage_options')) die('Nope');
+        global $db; $tbl = $db->prefix.'arm_estimate_requests';
+        $rows = $db->get_results("SELECT * FROM $tbl ORDER BY created_at DESC", ARRAY_A);
         nocache_headers();
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="estimate-requests.csv"');

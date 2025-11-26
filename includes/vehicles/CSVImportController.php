@@ -26,7 +26,7 @@ class CSVImportController {
         if (!current_user_can('manage_options')) return;
 
         $result = null;
-        if (!empty($_POST['arm_csv_nonce']) && wp_verify_nonce($_POST['arm_csv_nonce'], 'arm_csv_import')) {
+        if (!empty($_POST['arm_csv_nonce']) && verify_nonce($_POST['arm_csv_nonce'], 'arm_csv_import')) {
             $result = self::handle_upload_and_import();
         }
         ?>
@@ -39,7 +39,7 @@ class CSVImportController {
           <?php endif; ?>
 
           <form method="post" enctype="multipart/form-data">
-            <?php wp_nonce_field('arm_csv_import','arm_csv_nonce'); ?>
+            <?php nonce_field('arm_csv_import','arm_csv_nonce'); ?>
             <input type="file" name="arm_csv" accept=".csv,text/csv" required>
             <?php submit_button(__('Import CSV','arm-repair-estimates')); ?>
           </form>
@@ -58,7 +58,7 @@ Year,Make,Model,Engine,Transmission,Drive,Trim
         if (empty($_FILES['arm_csv']['name'])) return ['ok'=>false,'message'=>__('No file uploaded.','arm-repair-estimates')];
 
         $overrides = ['test_form' => false, 'mimes'=>['csv'=>'text/csv','txt'=>'text/plain']];
-        $upl = wp_handle_upload($_FILES['arm_csv'], $overrides);
+        $upl = handle_upload($_FILES['arm_csv'], $overrides);
         if (!empty($upl['error'])) return ['ok'=>false, 'message'=>$upl['error']];
 
         $path = $upl['file'];
@@ -71,7 +71,7 @@ Year,Make,Model,Engine,Transmission,Drive,Trim
         $dupes = 0;
         $fail  = 0;
 
-        global $wpdb; $tbl = $wpdb->prefix.'arm_vehicle_data';
+        global $db; $tbl = $db->prefix.'arm_vehicle_data';
 
         while (($row = fgetcsv($fh)) !== false) {
             $line++;
@@ -90,11 +90,11 @@ Year,Make,Model,Engine,Transmission,Drive,Trim
             $data = self::map_row($cols, $row);
             if (!$data) { $fail++; continue; }
 
-            $sql = $wpdb->prepare(
+            $sql = $db->prepare(
                 "INSERT IGNORE INTO $tbl (year, make, model, engine, transmission, drive, trim, created_at) VALUES (%d,%s,%s,%s,%s,%s,%s,%s)",
                 (int)$data['year'], $data['make'], $data['model'], $data['engine'], $data['transmission'], $data['drive'], $data['trim'], current_time('mysql')
             );
-            $res = $wpdb->query($sql);
+            $res = $db->query($sql);
             if ($res === false) { $fail++; }
             elseif ($res === 0) { $dupes++; }
             else { $ok++; }

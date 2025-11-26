@@ -29,17 +29,17 @@ final class Admin_Availability
     {
         if (!current_user_can('manage_options')) return;
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_availability';
+        global $db;
+        $table = $db->prefix . 'arm_availability';
 
-        if (!empty($_POST['arm_avail_nonce']) && wp_verify_nonce($_POST['arm_avail_nonce'], 'arm_avail_save')) {
-            $wpdb->query("DELETE FROM $table WHERE type='hours'");
+        if (!empty($_POST['arm_avail_nonce']) && verify_nonce($_POST['arm_avail_nonce'], 'arm_avail_save')) {
+            $db->query("DELETE FROM $table WHERE type='hours'");
             if (!empty($_POST['hours']) && is_array($_POST['hours'])) {
                 foreach ($_POST['hours'] as $day => $row) {
                     $start = sanitize_text_field($row['start'] ?? '');
                     $end   = sanitize_text_field($row['end'] ?? '');
                     if (!$start || !$end) continue;
-                    $wpdb->insert($table, [
+                    $db->insert($table, [
                         'type'        => 'hours',
                         'day_of_week' => (int) $day,
                         'start_time'  => $start,
@@ -48,13 +48,13 @@ final class Admin_Availability
                 }
             }
 
-            $wpdb->query("DELETE FROM $table WHERE type='holiday'");
+            $db->query("DELETE FROM $table WHERE type='holiday'");
             if (!empty($_POST['holiday_date']) && is_array($_POST['holiday_date'])) {
                 foreach ($_POST['holiday_date'] as $i => $date) {
                     $date = sanitize_text_field($date);
                     if (!$date) continue;
                     $label = sanitize_text_field($_POST['holiday_label'][$i] ?? '');
-                    $wpdb->insert($table, [
+                    $db->insert($table, [
                         'type'  => 'holiday',
                         'date'  => $date,
                         'label' => $label,
@@ -65,15 +65,15 @@ final class Admin_Availability
             echo '<div class="updated"><p>' . esc_html__('Availability saved.', 'arm-repair-estimates') . '</p></div>';
         }
 
-        $hours = $wpdb->get_results("SELECT * FROM $table WHERE type='hours'", OBJECT_K);
-        $holidays = $wpdb->get_results("SELECT * FROM $table WHERE type='holiday' ORDER BY date ASC");
+        $hours = $db->get_results("SELECT * FROM $table WHERE type='hours'", OBJECT_K);
+        $holidays = $db->get_results("SELECT * FROM $table WHERE type='holiday' ORDER BY date ASC");
 
         $days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
         ?>
         <div class="wrap">
           <h1><?php _e('Availability Settings', 'arm-repair-estimates'); ?></h1>
           <form method="post">
-            <?php wp_nonce_field('arm_avail_save', 'arm_avail_nonce'); ?>
+            <?php nonce_field('arm_avail_save', 'arm_avail_nonce'); ?>
             <h2><?php _e('Weekly Hours', 'arm-repair-estimates'); ?></h2>
             <table class="form-table">
               <?php foreach ($days as $i => $day):

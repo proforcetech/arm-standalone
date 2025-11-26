@@ -7,7 +7,7 @@
   <h1><?php esc_html_e('Financial Reports', 'arm-repair-estimates'); ?></h1>
 
   <form method="get" class="arm-accounting-filter">
-    <input type="hidden" name="page" value="<?php echo isset($_GET['page']) ? esc_attr(sanitize_text_field(wp_unslash($_GET['page']))):''; ?>">
+    <input type="hidden" name="page" value="<?php echo isset($_GET['page']) ? esc_attr(sanitize_text_field(unslash($_GET['page']))):''; ?>">
     <table class="form-table">
       <tr>
         <th scope="row"><?php esc_html_e('From', 'arm-repair-estimates'); ?></th>

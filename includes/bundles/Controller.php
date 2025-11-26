@@ -22,17 +22,17 @@ class Controller {
         });
 
         
-        add_action('wp_ajax_arm_re_get_bundle_items', [__CLASS__, 'ajax_get_bundle_items']);
+        add_action('ajax_arm_re_get_bundle_items', [__CLASS__, 'ajax_get_bundle_items']);
     }
 
     /** --------------------------------------------------------------
      * DB install/upgrade
      * --------------------------------------------------------------*/
     public static function install_tables() {
-        global $wpdb; require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        $charset = $wpdb->get_charset_collate();
-        $bT  = $wpdb->prefix . 'arm_service_bundles';
-        $biT = $wpdb->prefix . 'arm_service_bundle_items';
+        global $db; require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        $charset = $db->get_charset_collate();
+        $bT  = $db->prefix . 'arm_service_bundles';
+        $biT = $db->prefix . 'arm_service_bundle_items';
 
         dbDelta("CREATE TABLE $bT (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -64,21 +64,21 @@ class Controller {
      * AJAX: return items for a bundle (used by estimate builder)
      * --------------------------------------------------------------*/
     public static function ajax_get_bundle_items() {
-        if (!current_user_can('manage_options')) wp_send_json_error();
+        if (!current_user_can('manage_options')) send_json_error();
         $nonce = $_REQUEST['_ajax_nonce'] ?? $_REQUEST['nonce'] ?? '';
-        if (!wp_verify_nonce($nonce, 'arm_re_est_admin')) {
-            wp_send_json_error(['error' => 'invalid_nonce'], 403);
+        if (!verify_nonce($nonce, 'arm_re_est_admin')) {
+            send_json_error(['error' => 'invalid_nonce'], 403);
         }
 
-        global $wpdb;
+        global $db;
         $id  = (int)($_POST['bundle_id'] ?? 0);
-        $biT = $wpdb->prefix . 'arm_service_bundle_items';
-        $rows = $wpdb->get_results($wpdb->prepare(
+        $biT = $db->prefix . 'arm_service_bundle_items';
+        $rows = $db->get_results($db->prepare(
             "SELECT item_type, description, qty, unit_price, taxable, sort_order
              FROM $biT WHERE bundle_id=%d
              ORDER BY sort_order ASC, id ASC", $id
         ), ARRAY_A);
-        wp_send_json_success(['items' => $rows ?: []]);
+        send_json_success(['items' => $rows ?: []]);
     }
 
     /** --------------------------------------------------------------
@@ -86,13 +86,13 @@ class Controller {
      * --------------------------------------------------------------*/
     public static function render_admin() {
         if (!current_user_can('manage_options')) return;
-        global $wpdb;
-        $bT  = $wpdb->prefix . 'arm_service_bundles';
-        $biT = $wpdb->prefix . 'arm_service_bundle_items';
-        $sT  = $wpdb->prefix . 'arm_service_types';
+        global $db;
+        $bT  = $db->prefix . 'arm_service_bundles';
+        $biT = $db->prefix . 'arm_service_bundle_items';
+        $sT  = $db->prefix . 'arm_service_types';
 
         
-        if (!empty($_POST['arm_bndl_nonce']) && wp_verify_nonce($_POST['arm_bndl_nonce'], 'arm_bndl_save')) {
+        if (!empty($_POST['arm_bndl_nonce']) && verify_nonce($_POST['arm_bndl_nonce'], 'arm_bndl_save')) {
             $id = (int)($_POST['id'] ?? 0);
             $data = [
                 'service_type_id' => (int)($_POST['service_type_id'] ?? 0) ?: null,
@@ -102,20 +102,20 @@ class Controller {
                 'updated_at'      => current_time('mysql'),
             ];
             if ($id) {
-                $wpdb->update($bT, $data, ['id' => $id]);
+                $db->update($bT, $data, ['id' => $id]);
             } else {
                 $data['created_at'] = current_time('mysql');
-                $wpdb->insert($bT, $data);
-                $id = (int)$wpdb->insert_id;
+                $db->insert($bT, $data);
+                $id = (int)$db->insert_id;
             }
 
             
-            $wpdb->query($wpdb->prepare("DELETE FROM $biT WHERE bundle_id=%d", $id));
+            $db->query($db->prepare("DELETE FROM $biT WHERE bundle_id=%d", $id));
             $items = $_POST['items'] ?? [];
             $i = 0;
             foreach ($items as $it) {
                 if (empty($it['desc'])) continue;
-                $wpdb->insert($biT, [
+                $db->insert($biT, [
                     'bundle_id'  => $id,
                     'item_type'  => in_array(($it['type'] ?? 'LABOR'), ['LABOR','PART','FEE','DISCOUNT'], true) ? $it['type'] : 'LABOR',
                     'description'=> sanitize_text_field($it['desc']),
@@ -129,8 +129,8 @@ class Controller {
         }
 
         
-        $services = $wpdb->get_results("SELECT id, name FROM $sT WHERE is_active=1 ORDER BY name ASC");
-        $bundles  = $wpdb->get_results("SELECT * FROM $bT ORDER BY sort_order ASC, name ASC");
+        $services = $db->get_results("SELECT id, name FROM $sT WHERE is_active=1 ORDER BY name ASC");
+        $bundles  = $db->get_results("SELECT * FROM $bT ORDER BY sort_order ASC, name ASC");
         ?>
         <div class="wrap">
           <h1><?php _e('Preset Bundles','arm-repair-estimates'); ?></h1>
@@ -138,7 +138,7 @@ class Controller {
 
           <h2><?php _e('Add / Edit Bundle','arm-repair-estimates'); ?></h2>
           <form method="post">
-            <?php wp_nonce_field('arm_bndl_save', 'arm_bndl_nonce'); ?>
+            <?php nonce_field('arm_bndl_save', 'arm_bndl_nonce'); ?>
             <input type="hidden" name="id" value="">
             <table class="form-table" role="presentation">
               <tr>

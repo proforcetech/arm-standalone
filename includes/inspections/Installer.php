@@ -7,14 +7,14 @@ final class Installer
 {
     public static function install_tables(): void
     {
-        global $wpdb;
+        global $db;
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-        $charset   = $wpdb->get_charset_collate();
-        $templates = $wpdb->prefix . 'arm_inspection_templates';
-        $items     = $wpdb->prefix . 'arm_inspection_template_items';
-        $reports   = $wpdb->prefix . 'arm_inspections';
-        $responses = $wpdb->prefix . 'arm_inspection_responses';
+        $charset   = $db->get_charset_collate();
+        $templates = $db->prefix . 'arm_inspection_templates';
+        $items     = $db->prefix . 'arm_inspection_template_items';
+        $reports   = $db->prefix . 'arm_inspections';
+        $responses = $db->prefix . 'arm_inspection_responses';
 
         dbDelta("CREATE TABLE $templates (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

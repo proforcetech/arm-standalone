@@ -43,10 +43,10 @@ class StripeController {
     }
 
     /** Create a Stripe Checkout Session and return its URL */
-    public static function rest_checkout(\WP_REST_Request $req) {
+    public static function rest_checkout(\REST_Request $req) {
         $invoice_id = (int) $req->get_param('invoice_id');
         if ($invoice_id <= 0) {
-            return new \WP_REST_Response(['error' => 'invoice_id required'], 400);
+            return new \REST_Response(['error' => 'invoice_id required'], 400);
         }
 
         $result = StripeService::create_checkout_session($invoice_id);
@@ -60,16 +60,16 @@ class StripeController {
             } elseif ($code === 'not_configured') {
                 $status = 500;
             }
-            return new \WP_REST_Response($result, $status);
+            return new \REST_Response($result, $status);
         }
-        return new \WP_REST_Response($result, 200);
+        return new \REST_Response($result, 200);
     }
 
     /** Create a PaymentIntent and return client_secret */
-    public static function rest_payment_intent(\WP_REST_Request $req) {
+    public static function rest_payment_intent(\REST_Request $req) {
         $invoice_id = (int) $req->get_param('invoice_id');
         if ($invoice_id <= 0) {
-            return new \WP_REST_Response(['error' => 'invoice_id required'], 400);
+            return new \REST_Response(['error' => 'invoice_id required'], 400);
         }
         $result = StripeService::create_payment_intent($invoice_id);
         if (!empty($result['error'])) {
@@ -82,13 +82,13 @@ class StripeController {
             } elseif ($code === 'not_configured') {
                 $status = 500;
             }
-            return new \WP_REST_Response($result, $status);
+            return new \REST_Response($result, $status);
         }
-        return new \WP_REST_Response($result, 200);
+        return new \REST_Response($result, 200);
     }
 
     /** Stripe webhook to mark invoices PAID */
-    public static function rest_webhook(\WP_REST_Request $req) {
+    public static function rest_webhook(\REST_Request $req) {
         $payload   = $req->get_body();
         $signature = (string) $req->get_header('stripe-signature');
         if ($signature === '') {
@@ -99,6 +99,6 @@ class StripeController {
         }
         $result = StripeService::handle_webhook($payload, $signature);
         $status = empty($result['error']) ? 200 : 400;
-        return new \WP_REST_Response($result, $status);
+        return new \REST_Response($result, $status);
     }
 }

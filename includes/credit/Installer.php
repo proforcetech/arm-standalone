@@ -15,11 +15,11 @@ class Installer {
 	 * Install credit management tables.
 	 */
 	public static function install_tables() {
-		global $wpdb;
-		$charset_collate = $wpdb->get_charset_collate();
+		global $db;
+		$charset_collate = $db->get_charset_collate();
 
 		// Credit Accounts Table
-		$sql_accounts = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}arm_credit_accounts (
+		$sql_accounts = "CREATE TABLE IF NOT EXISTS {$db->prefix}arm_credit_accounts (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			customer_id BIGINT UNSIGNED NOT NULL,
 			credit_limit DECIMAL(10,2) NOT NULL DEFAULT 0.00,
@@ -38,7 +38,7 @@ class Installer {
 		) $charset_collate;";
 
 		// Credit Transactions Table
-		$sql_transactions = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}arm_credit_transactions (
+		$sql_transactions = "CREATE TABLE IF NOT EXISTS {$db->prefix}arm_credit_transactions (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			account_id BIGINT UNSIGNED NOT NULL,
 			customer_id BIGINT UNSIGNED NOT NULL,
@@ -59,7 +59,7 @@ class Installer {
 		) $charset_collate;";
 
 		// Credit Payments Table
-		$sql_payments = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}arm_credit_payments (
+		$sql_payments = "CREATE TABLE IF NOT EXISTS {$db->prefix}arm_credit_payments (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			account_id BIGINT UNSIGNED NOT NULL,
 			customer_id BIGINT UNSIGNED NOT NULL,
@@ -80,7 +80,7 @@ class Installer {
 		) $charset_collate;";
 
 		// Credit Payment Reminders Table
-		$sql_reminders = "CREATE TABLE IF NOT EXISTS {$wpdb->prefix}arm_credit_reminders (
+		$sql_reminders = "CREATE TABLE IF NOT EXISTS {$db->prefix}arm_credit_reminders (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 			account_id BIGINT UNSIGNED NOT NULL,
 			customer_id BIGINT UNSIGNED NOT NULL,

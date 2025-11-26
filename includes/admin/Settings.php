@@ -8,14 +8,14 @@ class Settings {
     }
 
     public static function register() {
-        register_setting('arm_re_settings', 'arm_re_terms_html',  ['type'=>'string','sanitize_callback'=>'wp_kses_post']);
+        register_setting('arm_re_settings', 'arm_re_terms_html',  ['type'=>'string','sanitize_callback'=>'kses_post']);
         register_setting('arm_re_settings', 'arm_re_notify_email',['type'=>'string','sanitize_callback'=>'sanitize_email']);
         register_setting('arm_re_settings', 'arm_re_tax_rate',    ['type'=>'number','sanitize_callback'=>function($v){return is_numeric($v)? $v:0;}]);
         register_setting('arm_re_settings', 'arm_re_labor_rate',  ['type'=>'number','sanitize_callback'=>function($v){return is_numeric($v)? $v:0;}]);
 
         
         register_setting('arm_re_settings','arm_re_shop_name',['type'=>'string','sanitize_callback'=>'sanitize_text_field']);
-        register_setting('arm_re_settings','arm_re_shop_address',['type'=>'string','sanitize_callback'=>'wp_kses_post']);
+        register_setting('arm_re_settings','arm_re_shop_address',['type'=>'string','sanitize_callback'=>'kses_post']);
         register_setting('arm_re_settings','arm_re_shop_phone',['type'=>'string','sanitize_callback'=>'sanitize_text_field']);
         register_setting('arm_re_settings','arm_re_shop_email',['type'=>'string','sanitize_callback'=>'sanitize_email']);
         register_setting('arm_re_settings','arm_re_logo_url',['type'=>'string','sanitize_callback'=>'esc_url_raw']);
@@ -50,28 +50,28 @@ class Settings {
     public static function render() {
         if (!current_user_can('manage_options')) return;
         
-        global $wpdb;
-        $tbl = $wpdb->prefix.'arm_availability';
+        global $db;
+        $tbl = $db->prefix.'arm_availability';
 
-        if (!empty($_POST['arm_avail_nonce']) && wp_verify_nonce($_POST['arm_avail_nonce'],'arm_avail_save')) {
-            $wpdb->query("DELETE FROM $tbl WHERE type='hours'");
+        if (!empty($_POST['arm_avail_nonce']) && verify_nonce($_POST['arm_avail_nonce'],'arm_avail_save')) {
+            $db->query("DELETE FROM $tbl WHERE type='hours'");
             foreach ($_POST['arm_hours'] as $dow=>$h) {
                 if (empty($h['start'])||empty($h['end'])) continue;
-                $wpdb->insert($tbl,[
+                $db->insert($tbl,[
                     'type'=>'hours','day_of_week'=>$dow,
                     'start_time'=>$h['start'],'end_time'=>$h['end']
                 ]);
             }
         }
-        if (!empty($_POST['arm_holiday_nonce']) && wp_verify_nonce($_POST['arm_holiday_nonce'],'arm_holiday_add')) {
-            $wpdb->insert($tbl,[
+        if (!empty($_POST['arm_holiday_nonce']) && verify_nonce($_POST['arm_holiday_nonce'],'arm_holiday_add')) {
+            $db->insert($tbl,[
                 'type'=>'holiday',
                 'date'=>sanitize_text_field($_POST['date']),
                 'label'=>sanitize_text_field($_POST['label'])
             ]);
         }
-        if (!empty($_GET['del_holiday']) && !empty($_GET['_wpnonce']) && wp_verify_nonce($_GET['_wpnonce'],'arm_holiday_del')) {
-            $wpdb->delete($tbl,['id'=>intval($_GET['del_holiday'])]);
+        if (!empty($_GET['del_holiday']) && !empty($_GET['_wpnonce']) && verify_nonce($_GET['_wpnonce'],'arm_holiday_del')) {
+            $db->delete($tbl,['id'=>intval($_GET['del_holiday'])]);
         }
         
         ?>
@@ -87,8 +87,8 @@ class Settings {
               <tr>
                 <th><?php _e('Terms & Conditions (HTML allowed)','arm-repair-estimates'); ?></th>
                 <td><?php
-                    $content = wp_kses_post(get_option('arm_re_terms_html',''));
-                    wp_editor($content, 'arm_re_terms_html', ['textarea_name'=>'arm_re_terms_html','media_buttons'=>false,'textarea_rows'=>10]);
+                    $content = kses_post(get_option('arm_re_terms_html',''));
+                    editor($content, 'arm_re_terms_html', ['textarea_name'=>'arm_re_terms_html','media_buttons'=>false,'textarea_rows'=>10]);
                 ?></td>
               </tr>
               <tr>
@@ -251,7 +251,7 @@ class Settings {
             </table>
 <h2><?php _e('Appointment Hours','arm-repair-estimates'); ?></h2>
 <?php
-$hours = $wpdb->get_results("SELECT * FROM $tbl WHERE type='hours'", OBJECT_K);
+$hours = $db->get_results("SELECT * FROM $tbl WHERE type='hours'", OBJECT_K);
 $days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 ?>
 <table class="widefat striped">
@@ -269,7 +269,7 @@ $days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
 
 <h2><?php _e('Holidays','arm-repair-estimates'); ?></h2>
 <form method="post">
-  <?php wp_nonce_field('arm_holiday_add','arm_holiday_nonce'); ?>
+  <?php nonce_field('arm_holiday_add','arm_holiday_nonce'); ?>
   <p>
     <label><?php _e('Date'); ?> <input type="date" name="date"></label>
     <label><?php _e('Label'); ?> <input type="text" name="label"></label>
@@ -281,9 +281,9 @@ $days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
   <thead><tr><th><?php _e('Date'); ?></th><th><?php _e('Label'); ?></th><th><?php _e('Actions'); ?></th></tr></thead>
   <tbody>
     <?php
-    $holidays=$wpdb->get_results("SELECT * FROM $tbl WHERE type='holiday' ORDER BY date ASC");
+    $holidays=$db->get_results("SELECT * FROM $tbl WHERE type='holiday' ORDER BY date ASC");
     foreach ($holidays as $h):
-      $del=wp_nonce_url(add_query_arg(['del_holiday'=>$h->id]),'arm_holiday_del');
+      $del=nonce_url(add_query_arg(['del_holiday'=>$h->id]),'arm_holiday_del');
     ?>
     <tr>
       <td><?php echo esc_html($h->date); ?></td>

@@ -19,11 +19,11 @@ final class Preferences
             return null;
         }
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_reminder_preferences';
+        global $db;
+        $table = $db->prefix . 'arm_reminder_preferences';
 
-        return $wpdb->get_row(
-            $wpdb->prepare("SELECT * FROM $table WHERE customer_id=%d", $customer_id)
+        return $db->get_row(
+            $db->prepare("SELECT * FROM $table WHERE customer_id=%d", $customer_id)
         ) ?: null;
     }
 
@@ -37,11 +37,11 @@ final class Preferences
             return null;
         }
 
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_reminder_preferences';
+        global $db;
+        $table = $db->prefix . 'arm_reminder_preferences';
 
-        return $wpdb->get_row(
-            $wpdb->prepare("SELECT * FROM $table WHERE email=%s", $email)
+        return $db->get_row(
+            $db->prepare("SELECT * FROM $table WHERE email=%s", $email)
         ) ?: null;
     }
 
@@ -50,8 +50,8 @@ final class Preferences
      */
     public static function upsert(array $data): ?object
     {
-        global $wpdb;
-        $table = $wpdb->prefix . 'arm_reminder_preferences';
+        global $db;
+        $table = $db->prefix . 'arm_reminder_preferences';
 
         $normalized = self::normalize($data);
 
@@ -100,12 +100,12 @@ final class Preferences
                     source = VALUES(source),
                     updated_at = VALUES(updated_at)";
 
-        $prepared = $wpdb->prepare($sql, $values);
+        $prepared = $db->prepare($sql, $values);
         if ($prepared === null) {
             return null;
         }
 
-        $wpdb->query($prepared);
+        $db->query($prepared);
 
         if ($normalized['customer_id']) {
             return self::get_for_customer((int) $normalized['customer_id']);
@@ -155,7 +155,7 @@ final class Preferences
 
         $tz = isset($data['timezone']) ? sanitize_text_field($data['timezone']) : '';
         if ($tz === '') {
-            $tz = wp_timezone_string();
+            $tz = timezone_string();
         }
 
         $active = isset($data['is_active']) ? (int) $data['is_active'] : 1;

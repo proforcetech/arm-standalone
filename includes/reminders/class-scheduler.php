@@ -20,16 +20,16 @@ final class Scheduler
      */
     public static function run(): void
     {
-        global $wpdb;
+        global $db;
 
-        $campaigns_table = $wpdb->prefix . 'arm_reminder_campaigns';
-        $prefs_table     = $wpdb->prefix . 'arm_reminder_preferences';
-        $logs_table      = $wpdb->prefix . 'arm_reminder_logs';
-        $customers_table = $wpdb->prefix . 'arm_customers';
+        $campaigns_table = $db->prefix . 'arm_reminder_campaigns';
+        $prefs_table     = $db->prefix . 'arm_reminder_preferences';
+        $logs_table      = $db->prefix . 'arm_reminder_logs';
+        $customers_table = $db->prefix . 'arm_customers';
 
         $now = current_time('mysql');
-        $campaigns = $wpdb->get_results(
-            $wpdb->prepare(
+        $campaigns = $db->get_results(
+            $db->prepare(
                 "SELECT * FROM $campaigns_table WHERE status='active' AND next_run_at IS NOT NULL AND next_run_at <= %s",
                 $now
             )
@@ -40,7 +40,7 @@ final class Scheduler
         }
 
         foreach ($campaigns as $campaign) {
-            $preferences = $wpdb->get_results(
+            $preferences = $db->get_results(
                 "SELECT p.*, c.first_name, c.last_name FROM $prefs_table p " .
                 "LEFT JOIN $customers_table c ON p.customer_id = c.id " .
                 "WHERE p.is_active=1 AND p.preferred_channel <> 'none'"
@@ -58,8 +58,8 @@ final class Scheduler
                 }
 
                 foreach ($channels as $channel) {
-                    $exists = $wpdb->get_var(
-                        $wpdb->prepare(
+                    $exists = $db->get_var(
+                        $db->prepare(
                             "SELECT id FROM $logs_table WHERE campaign_id=%d AND preference_id=%d AND channel=%s AND scheduled_for=%s LIMIT 1",
                             $campaign->id,
                             $pref->id,
@@ -83,7 +83,7 @@ final class Scheduler
                             $error  = __('Missing email address', 'arm-repair-estimates');
                         } else {
                             $subject = $campaign->email_subject ?: $campaign->name;
-                            if (wp_mail($pref->email, $subject, $message)) {
+                            if (mail($pref->email, $subject, $message)) {
                                 $status = 'sent';
                                 $sent_at = current_time('mysql');
                             } else {
@@ -177,8 +177,8 @@ final class Scheduler
      */
     private static function advance_campaign(object $campaign): void
     {
-        global $wpdb;
-        $campaigns_table = $wpdb->prefix . 'arm_reminder_campaigns';
+        global $db;
+        $campaigns_table = $db->prefix . 'arm_reminder_campaigns';
 
         $now      = current_time('mysql');
         $interval = max(1, (int) ($campaign->frequency_interval ?? 1));
@@ -219,7 +219,7 @@ final class Scheduler
             $updates['next_run_at'] = $next_run;
         }
 
-        $wpdb->update(
+        $db->update(
             $campaigns_table,
             $updates,
             ['id' => (int) $campaign->id],
@@ -233,7 +233,7 @@ final class Scheduler
      */
     private static function insert_log(string $table, array $data): void
     {
-        global $wpdb;
+        global $db;
 
         $columns = array_keys($data);
         $placeholders = [];
@@ -255,9 +255,9 @@ final class Scheduler
         }
 
         $sql = "INSERT INTO $table (" . implode(',', $columns) . ") VALUES (" . implode(',', $placeholders) . ')';
-        $prepared = $wpdb->prepare($sql, $values);
+        $prepared = $db->prepare($sql, $values);
         if ($prepared !== null) {
-            $wpdb->query($prepared);
+            $db->query($prepared);
         }
     }
 }

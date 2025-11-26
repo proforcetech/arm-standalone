@@ -1,7 +1,7 @@
 <?php
 namespace ARM\TimeLogs;
 
-use WP_User;
+use User;
 
 if (!defined('ABSPATH')) exit;
 
@@ -26,7 +26,7 @@ final class Shortcode
     public static function render($atts = [], $content = null): string
     {
         if (!is_user_logged_in()) {
-            $login_url = wp_login_url();
+            $login_url = login_url();
             $message   = sprintf(
                 /* translators: %s: login URL */
                 __('Please <a href="%s">log in</a> to view your time tracking dashboard.', 'arm-repair-estimates'),
@@ -36,8 +36,8 @@ final class Shortcode
             return self::render_notice($message, 'info', true);
         }
 
-        $user = wp_get_current_user();
-        if (!$user instanceof WP_User || !Technician_Page::is_visible_to($user)) {
+        $user = get_current_user();
+        if (!$user instanceof User || !Technician_Page::is_visible_to($user)) {
             return self::render_notice(__('You do not have permission to view this content.', 'arm-repair-estimates'), 'error');
         }
 
@@ -53,7 +53,7 @@ final class Shortcode
         ?>
         <div class="arm-tech-time arm-tech-time--shortcode">
             <div class="notice <?php echo esc_attr($notice); ?>">
-                <p><?php echo $allow_html ? wp_kses_post($message) : esc_html($message); ?></p>
+                <p><?php echo $allow_html ? kses_post($message) : esc_html($message); ?></p>
             </div>
         </div>
         <?php

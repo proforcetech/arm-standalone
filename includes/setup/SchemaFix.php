@@ -6,12 +6,12 @@ if (!defined('ABSPATH')) exit;
 
 class SchemaFix {
     public static function run(): void {
-        global $wpdb;
+        global $db;
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-        $estimates_table = $wpdb->prefix . 'arm_estimates';
-        $jobs_table      = $wpdb->prefix . 'arm_estimate_jobs';
-        $time_entries    = $wpdb->prefix . 'arm_time_entries';
+        $estimates_table = $db->prefix . 'arm_estimates';
+        $jobs_table      = $db->prefix . 'arm_estimate_jobs';
+        $time_entries    = $db->prefix . 'arm_time_entries';
         self::addColumn($estimates_table, 'vehicle_id', 'BIGINT UNSIGNED NULL');
         self::addColumn($estimates_table, 'vehicle_year', 'SMALLINT UNSIGNED NULL');
         self::addColumn($estimates_table, 'vehicle_make', 'VARCHAR(80) NULL');
@@ -26,17 +26,17 @@ class SchemaFix {
         self::addColumn($time_entries, 'start_location', 'LONGTEXT NULL');
         self::addColumn($time_entries, 'end_location', 'LONGTEXT NULL');
 
-        self::ensurePrimaryKey($wpdb->prefix . 'arm_customers', 'id');
-        self::ensurePrimaryKey($wpdb->prefix . 'arm_appointments', 'id');
+        self::ensurePrimaryKey($db->prefix . 'arm_customers', 'id');
+        self::ensurePrimaryKey($db->prefix . 'arm_appointments', 'id');
 
         
         self::modifyColumn(
-            $wpdb->prefix . 'arm_availability',
+            $db->prefix . 'arm_availability',
             'day_of_week',
             "TINYINT NULL COMMENT '0=Sunday,6=Saturday (for hours)'"
         );
         self::modifyColumn(
-            $wpdb->prefix . 'arm_availability',
+            $db->prefix . 'arm_availability',
             'date',
             "DATE NULL COMMENT 'for holiday single day'"
         );
@@ -47,27 +47,27 @@ class SchemaFix {
         self::addIndex($estimates_table, 'idx_arm_estimates_vehicle_id', ['vehicle_id']);
         self::addIndex($estimates_table, 'idx_arm_estimates_technician_id', ['technician_id']);
 
-        self::addIndex($wpdb->prefix . 'arm_estimate_jobs', 'idx_arm_estimate_jobs_estimate_id', ['estimate_id']);
-        self::addIndex($wpdb->prefix . 'arm_estimate_jobs', 'idx_arm_estimate_jobs_technician_id', ['technician_id']);
+        self::addIndex($db->prefix . 'arm_estimate_jobs', 'idx_arm_estimate_jobs_estimate_id', ['estimate_id']);
+        self::addIndex($db->prefix . 'arm_estimate_jobs', 'idx_arm_estimate_jobs_technician_id', ['technician_id']);
 
-        self::addIndex($wpdb->prefix . 'arm_estimate_items', 'idx_arm_estimate_items_estimate_id', ['estimate_id']);
-        self::addIndex($wpdb->prefix . 'arm_estimate_items', 'idx_arm_estimate_items_job_id', ['job_id']);
+        self::addIndex($db->prefix . 'arm_estimate_items', 'idx_arm_estimate_items_estimate_id', ['estimate_id']);
+        self::addIndex($db->prefix . 'arm_estimate_items', 'idx_arm_estimate_items_job_id', ['job_id']);
 
-        self::addIndex($wpdb->prefix . 'arm_invoices', 'idx_arm_invoices_customer_id', ['customer_id']);
-        self::addIndex($wpdb->prefix . 'arm_invoices', 'idx_arm_invoices_estimate_id', ['estimate_id']);
+        self::addIndex($db->prefix . 'arm_invoices', 'idx_arm_invoices_customer_id', ['customer_id']);
+        self::addIndex($db->prefix . 'arm_invoices', 'idx_arm_invoices_estimate_id', ['estimate_id']);
 
-        self::addIndex($wpdb->prefix . 'arm_invoice_items', 'idx_arm_invoice_items_invoice_id', ['invoice_id']);
+        self::addIndex($db->prefix . 'arm_invoice_items', 'idx_arm_invoice_items_invoice_id', ['invoice_id']);
 
-        self::addIndex($wpdb->prefix . 'arm_service_bundles', 'idx_arm_service_bundles_service_type_id', ['service_type_id']);
-        self::addIndex($wpdb->prefix . 'arm_service_bundles', 'idx_arm_service_bundles_is_active', ['is_active']);
+        self::addIndex($db->prefix . 'arm_service_bundles', 'idx_arm_service_bundles_service_type_id', ['service_type_id']);
+        self::addIndex($db->prefix . 'arm_service_bundles', 'idx_arm_service_bundles_is_active', ['is_active']);
 
-        self::addIndex($wpdb->prefix . 'arm_service_bundle_items', 'idx_arm_service_bundle_items_bundle_id', ['bundle_id']);
+        self::addIndex($db->prefix . 'arm_service_bundle_items', 'idx_arm_service_bundle_items_bundle_id', ['bundle_id']);
     }
 
     private static function ensurePrimaryKey(string $table, string $column): void {
-        global $wpdb;
-        $hasPk = $wpdb->get_var(
-            $wpdb->prepare(
+        global $db;
+        $hasPk = $db->get_var(
+            $db->prepare(
                 "SELECT 1 FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
                  WHERE CONSTRAINT_TYPE='PRIMARY KEY'
                    AND TABLE_SCHEMA=DATABASE()
@@ -78,15 +78,15 @@ class SchemaFix {
         );
         if (!$hasPk) {
             
-            $wpdb->query("ALTER TABLE `$table` ADD PRIMARY KEY (`$column`)");
+            $db->query("ALTER TABLE `$table` ADD PRIMARY KEY (`$column`)");
         }
     }
 
     private static function modifyColumn(string $table, string $column, string $definition): void {
-        global $wpdb;
+        global $db;
 
-        $exists = $wpdb->get_var(
-            $wpdb->prepare(
+        $exists = $db->get_var(
+            $db->prepare(
                 "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
                  WHERE TABLE_SCHEMA=DATABASE()
                    AND TABLE_NAME=%s
@@ -96,12 +96,12 @@ class SchemaFix {
             )
         );
         if ($exists) {
-            $wpdb->query("ALTER TABLE `$table` MODIFY COLUMN `$column` $definition");
+            $db->query("ALTER TABLE `$table` MODIFY COLUMN `$column` $definition");
         }
     }
 
     private static function addColumn(string $table, string $column, string $definition): void {
-        global $wpdb;
+        global $db;
 
         $column = sanitize_key($column);
         $definition = trim($definition);
@@ -110,8 +110,8 @@ class SchemaFix {
             return;
         }
 
-        $exists = $wpdb->get_var(
-            $wpdb->prepare(
+        $exists = $db->get_var(
+            $db->prepare(
                 "SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS
                  WHERE TABLE_SCHEMA=DATABASE()
                    AND TABLE_NAME=%s
@@ -125,16 +125,16 @@ class SchemaFix {
             return;
         }
 
-        $wpdb->query("ALTER TABLE `$table_clean` ADD COLUMN `$column` $definition");
+        $db->query("ALTER TABLE `$table_clean` ADD COLUMN `$column` $definition");
     }
 
     private static function addIndex(string $table, string $indexName, array $columns, string $type = 'INDEX'): void {
-        global $wpdb;
+        global $db;
         if (empty($columns)) return;
 
 
-        $exists = $wpdb->get_var(
-            $wpdb->prepare(
+        $exists = $db->get_var(
+            $db->prepare(
                 "SELECT 1 FROM INFORMATION_SCHEMA.STATISTICS
                  WHERE TABLE_SCHEMA=DATABASE()
                    AND TABLE_NAME=%s
@@ -148,6 +148,6 @@ class SchemaFix {
         
         $cols = implode('`,`', array_map('sanitize_key', $columns));
         $sql  = "ALTER TABLE `$table` ADD $type `$indexName` (`$cols`)";
-        $wpdb->query($sql);
+        $db->query($sql);
     }
 }

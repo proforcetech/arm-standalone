@@ -100,7 +100,7 @@ if (!function_exists('esc_sql')) {
      */
     function esc_sql($data)
     {
-        global $wpdb;
+        global $db;
 
         if (is_array($data)) {
             foreach ($data as &$value) {
@@ -109,7 +109,7 @@ if (!function_exists('esc_sql')) {
             return $data;
         }
 
-        return $wpdb->esc_like((string) $data);
+        return $db->esc_like((string) $data);
     }
 }
 
@@ -189,11 +189,11 @@ if (!function_exists('sanitize_file_name')) {
     }
 }
 
-if (!function_exists('wp_kses_post')) {
+if (!function_exists('kses_post')) {
     /**
      * Sanitize content for allowed HTML tags for post content
      */
-    function wp_kses_post($data): string
+    function kses_post($data): string
     {
         $allowed_html = [
             'a' => ['href' => [], 'title' => [], 'target' => [], 'rel' => []],
@@ -227,19 +227,19 @@ if (!function_exists('wp_kses_post')) {
             'pre' => ['class' => []],
         ];
 
-        return wp_kses($data, $allowed_html);
+        return kses($data, $allowed_html);
     }
 }
 
-if (!function_exists('wp_kses')) {
+if (!function_exists('kses')) {
     /**
      * Strip disallowed HTML tags and attributes
      */
-    function wp_kses($string, $allowed_html, $allowed_protocols = []): string
+    function kses($string, $allowed_html, $allowed_protocols = []): string
     {
         if (is_array($string)) {
             return array_map(function($item) use ($allowed_html, $allowed_protocols) {
-                return wp_kses($item, $allowed_html, $allowed_protocols);
+                return kses($item, $allowed_html, $allowed_protocols);
             }, $string);
         }
 
@@ -294,11 +294,11 @@ if (!function_exists('wp_kses')) {
     }
 }
 
-if (!function_exists('wp_kses_data')) {
+if (!function_exists('kses_data')) {
     /**
      * Sanitize content with very limited HTML
      */
-    function wp_kses_data(string $data): string
+    function kses_data(string $data): string
     {
         $allowed_html = [
             'strong' => [],
@@ -309,15 +309,15 @@ if (!function_exists('wp_kses_data')) {
             'a' => ['href' => [], 'title' => []],
         ];
 
-        return wp_kses($data, $allowed_html);
+        return kses($data, $allowed_html);
     }
 }
 
-if (!function_exists('wp_strip_all_tags')) {
+if (!function_exists('strip_all_tags')) {
     /**
      * Strip all HTML tags including script and style
      */
-    function wp_strip_all_tags(string $string, bool $remove_breaks = false): string
+    function strip_all_tags(string $string, bool $remove_breaks = false): string
     {
         $string = preg_replace('@<(script|style)[^>]*?>.*?</\\1>@si', '', $string);
         $string = strip_tags($string);
@@ -362,11 +362,11 @@ if (!function_exists('intval')) {
      */
 }
 
-if (!function_exists('wp_unslash')) {
+if (!function_exists('unslash')) {
     /**
      * Remove slashes from string or array
      */
-    function wp_unslash($value)
+    function unslash($value)
     {
         return stripslashes_deep($value);
     }
@@ -394,14 +394,14 @@ if (!function_exists('stripslashes_deep')) {
     }
 }
 
-if (!function_exists('wp_slash')) {
+if (!function_exists('slash')) {
     /**
      * Add slashes to string or array
      */
-    function wp_slash($value)
+    function slash($value)
     {
         if (is_array($value)) {
-            return array_map('wp_slash', $value);
+            return array_map('slash', $value);
         }
 
         return is_string($value) ? addslashes($value) : $value;

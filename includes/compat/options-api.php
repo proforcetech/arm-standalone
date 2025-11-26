@@ -9,7 +9,7 @@ declare(strict_types=1);
 if (!function_exists('get_option')) {
     function get_option(string $option, $default = false)
     {
-        global $wpdb;
+        global $db;
 
         $option = trim($option);
         if (empty($option)) {
@@ -22,8 +22,8 @@ if (!function_exists('get_option')) {
             return $value;
         }
 
-        $table = $wpdb->prefix . 'options';
-        $row = $wpdb->get_row($wpdb->prepare(
+        $table = $db->prefix . 'options';
+        $row = $db->get_row($db->prepare(
             "SELECT option_value FROM {$table} WHERE option_name = %s LIMIT 1",
             $option
         ));
@@ -46,7 +46,7 @@ if (!function_exists('get_option')) {
 if (!function_exists('update_option')) {
     function update_option(string $option, $value, $autoload = null): bool
     {
-        global $wpdb;
+        global $db;
 
         $option = trim($option);
         if (empty($option)) {
@@ -65,22 +65,22 @@ if (!function_exists('update_option')) {
             $value = serialize($value);
         }
 
-        $table = $wpdb->prefix . 'options';
+        $table = $db->prefix . 'options';
 
-        $exists = $wpdb->get_var($wpdb->prepare(
+        $exists = $db->get_var($db->prepare(
             "SELECT COUNT(*) FROM {$table} WHERE option_name = %s",
             $option
         ));
 
         if ($exists) {
-            $result = $wpdb->update(
+            $result = $db->update(
                 $table,
                 ['option_value' => $value],
                 ['option_name' => $option]
             );
         } else {
             $autoload = $autoload ?? 'yes';
-            $result = $wpdb->insert(
+            $result = $db->insert(
                 $table,
                 [
                     'option_name' => $option,
@@ -102,7 +102,7 @@ if (!function_exists('update_option')) {
 if (!function_exists('add_option')) {
     function add_option(string $option, $value = '', string $deprecated = '', $autoload = 'yes'): bool
     {
-        global $wpdb;
+        global $db;
 
         $option = trim($option);
         if (empty($option)) {
@@ -115,9 +115,9 @@ if (!function_exists('add_option')) {
             $value = serialize($value);
         }
 
-        $table = $wpdb->prefix . 'options';
+        $table = $db->prefix . 'options';
 
-        $exists = $wpdb->get_var($wpdb->prepare(
+        $exists = $db->get_var($db->prepare(
             "SELECT COUNT(*) FROM {$table} WHERE option_name = %s",
             $option
         ));
@@ -126,7 +126,7 @@ if (!function_exists('add_option')) {
             return false;
         }
 
-        $result = $wpdb->insert(
+        $result = $db->insert(
             $table,
             [
                 'option_name' => $option,
@@ -147,7 +147,7 @@ if (!function_exists('add_option')) {
 if (!function_exists('delete_option')) {
     function delete_option(string $option): bool
     {
-        global $wpdb;
+        global $db;
 
         $option = trim($option);
         if (empty($option)) {
@@ -158,8 +158,8 @@ if (!function_exists('delete_option')) {
 
         do_action("delete_option_{$option}", $option);
 
-        $table = $wpdb->prefix . 'options';
-        $result = $wpdb->delete($table, ['option_name' => $option]);
+        $table = $db->prefix . 'options';
+        $result = $db->delete($table, ['option_name' => $option]);
 
         if ($result) {
             do_action('delete_option', $option);

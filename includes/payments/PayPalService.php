@@ -152,7 +152,7 @@ class PayPalService {
         if ($id === '' || $sec === '') {
             return null;
         }
-        $resp = wp_remote_post(self::base_url() . '/v1/oauth2/token', [
+        $resp = remote_post(self::base_url() . '/v1/oauth2/token', [
             'timeout' => 15,
             'headers' => [
                 'Authorization' => 'Basic ' . base64_encode($id . ':' . $sec),
@@ -160,11 +160,11 @@ class PayPalService {
             ],
             'body'    => ['grant_type' => 'client_credentials'],
         ]);
-        if (is_wp_error($resp)) {
-            self::log_error('paypal_oauth_wp_error', $resp->get_error_message());
+        if (is_error($resp)) {
+            self::log_error('paypal_oauth_error', $resp->get_error_message());
             return null;
         }
-        $json = json_decode((string) wp_remote_retrieve_body($resp), true);
+        $json = json_decode((string) remote_retrieve_body($resp), true);
         if (!is_array($json) || empty($json['access_token'])) {
             self::log_error('paypal_oauth_invalid', $json);
             return null;
@@ -181,29 +181,29 @@ class PayPalService {
             }
         }
         if ($method !== 'GET') {
-            $args['body'] = is_string($body) ? $body : wp_json_encode($body);
+            $args['body'] = is_string($body) ? $body : json_encode($body);
         }
-        $resp = wp_remote_request($url, $args);
-        if (is_wp_error($resp)) {
+        $resp = remote_request($url, $args);
+        if (is_error($resp)) {
             return ['error' => $resp->get_error_message()];
         }
-        $json = json_decode((string) wp_remote_retrieve_body($resp), true);
+        $json = json_decode((string) remote_retrieve_body($resp), true);
         if (!is_array($json)) {
-            return ['error' => wp_remote_retrieve_body($resp)];
+            return ['error' => remote_retrieve_body($resp)];
         }
         return $json;
     }
 
     private static function get_invoice(int $id) {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_invoices';
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM $tbl WHERE id=%d", $id));
+        global $db;
+        $tbl = $db->prefix . 'arm_invoices';
+        return $db->get_row($db->prepare("SELECT * FROM $tbl WHERE id=%d", $id));
     }
 
     private static function mark_invoice_paid(int $invoice_id, string $reference, string $gateway): void {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_invoices';
-        $wpdb->update($tbl, [
+        global $db;
+        $tbl = $db->prefix . 'arm_invoices';
+        $db->update($tbl, [
             'status'     => 'PAID',
             'updated_at' => current_time('mysql'),
         ], ['id' => $invoice_id]);

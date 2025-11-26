@@ -14,12 +14,12 @@
 
   <h2><?php echo $edit ? esc_html__('Edit Purchase', 'arm-repair-estimates') : esc_html__('Log Purchase', 'arm-repair-estimates'); ?></h2>
   <form method="post">
-    <?php wp_nonce_field('arm_purchase_save', 'arm_purchase_nonce'); ?>
+    <?php nonce_field('arm_purchase_save', 'arm_purchase_nonce'); ?>
     <input type="hidden" name="id" value="<?php echo esc_attr($edit->id ?? 0); ?>">
     <table class="form-table">
       <tr>
         <th scope="row"><label for="purchase-date"><?php esc_html_e('Date', 'arm-repair-estimates'); ?></label></th>
-        <td><input type="date" id="purchase-date" name="transaction_date" value="<?php echo esc_attr($edit->transaction_date ?? wp_date('Y-m-d', current_time('timestamp'))); ?>" required></td>
+        <td><input type="date" id="purchase-date" name="transaction_date" value="<?php echo esc_attr($edit->transaction_date ?? date('Y-m-d', current_time('timestamp'))); ?>" required></td>
       </tr>
       <tr>
         <th scope="row"><label for="purchase-vendor"><?php esc_html_e('Vendor', 'arm-repair-estimates'); ?></label></th>
@@ -51,7 +51,7 @@
 
   <h2><?php esc_html_e('Filter', 'arm-repair-estimates'); ?></h2>
   <form method="get">
-    <input type="hidden" name="page" value="<?php echo isset($_GET['page']) ? esc_attr(sanitize_text_field(wp_unslash($_GET['page']))):''; ?>">
+    <input type="hidden" name="page" value="<?php echo isset($_GET['page']) ? esc_attr(sanitize_text_field(unslash($_GET['page']))):''; ?>">
     <table class="form-table">
       <tr>
         <th scope="row"><?php esc_html_e('From', 'arm-repair-estimates'); ?></th>
@@ -91,10 +91,10 @@
         <td><?php echo esc_html($row['purchase_order'] ?: $row['reference']); ?></td>
         <td><?php echo esc_html($row['category']); ?></td>
         <td><?php echo esc_html(number_format_i18n((float) $row['amount'], 2)); ?></td>
-        <td><?php echo esc_html(wp_trim_words(wp_strip_all_tags($row['description']), 12)); ?></td>
+        <td><?php echo esc_html(trim_words(strip_all_tags($row['description']), 12)); ?></td>
         <td>
           <?php $edit_link = add_query_arg('edit', (int) $row['id']); ?>
-          <?php $delete_link = wp_nonce_url(add_query_arg('delete', (int) $row['id']), 'arm_purchase_delete'); ?>
+          <?php $delete_link = nonce_url(add_query_arg('delete', (int) $row['id']), 'arm_purchase_delete'); ?>
           <a href="<?php echo esc_url($edit_link); ?>"><?php esc_html_e('Edit', 'arm-repair-estimates'); ?></a> |
           <a href="<?php echo esc_url($delete_link); ?>" onclick="return confirm('<?php echo esc_js(__('Delete this purchase?', 'arm-repair-estimates')); ?>');"><?php esc_html_e('Delete', 'arm-repair-estimates'); ?></a>
         </td>

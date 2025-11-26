@@ -175,11 +175,11 @@ class StripeService {
             $args['headers']['Content-Type'] = 'application/x-www-form-urlencoded';
         }
 
-        $resp = wp_remote_request($url, $args);
-        if (is_wp_error($resp)) {
+        $resp = remote_request($url, $args);
+        if (is_error($resp)) {
             return ['error' => $resp->get_error_message()];
         }
-        $body = wp_remote_retrieve_body($resp);
+        $body = remote_retrieve_body($resp);
         $json = json_decode((string) $body, true);
         if (!is_array($json)) {
             return ['error' => $body];
@@ -188,15 +188,15 @@ class StripeService {
     }
 
     private static function get_invoice(int $id) {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_invoices';
-        return $wpdb->get_row($wpdb->prepare("SELECT * FROM $tbl WHERE id=%d", $id));
+        global $db;
+        $tbl = $db->prefix . 'arm_invoices';
+        return $db->get_row($db->prepare("SELECT * FROM $tbl WHERE id=%d", $id));
     }
 
     private static function mark_invoice_paid(int $invoice_id, string $source, string $reference): void {
-        global $wpdb;
-        $tbl = $wpdb->prefix . 'arm_invoices';
-        $wpdb->update($tbl, [
+        global $db;
+        $tbl = $db->prefix . 'arm_invoices';
+        $db->update($tbl, [
             'status'     => 'PAID',
             'updated_at' => current_time('mysql'),
         ], ['id' => $invoice_id]);

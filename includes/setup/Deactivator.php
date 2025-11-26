@@ -12,8 +12,8 @@ final class Deactivator
     public static function deactivate(): void
     {
         
-        $ts = wp_next_scheduled('arm_re_cleanup');
-        if ($ts) wp_unschedule_event($ts, 'arm_re_cleanup');
+        $ts = next_scheduled('arm_re_cleanup');
+        if ($ts) unschedule_event($ts, 'arm_re_cleanup');
         flush_rewrite_rules();
     }
 }
