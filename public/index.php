@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use ARM\Routing\Kernel;
+use ARM\Auth\Controller as AuthController;
 use Dotenv\Dotenv;
 use FastRoute\Dispatcher;
 use FastRoute\RouteCollector;
@@ -22,6 +23,13 @@ Kernel::bootModules();
 
 $dispatcher = simpleDispatcher(function (RouteCollector $router) {
     $router->addRoute(['GET'], '/health', static fn () => ['status' => 'ok']);
+    $router->addRoute(['POST'], '/auth/login', [AuthController::class, 'login']);
+    $router->addRoute(['POST'], '/auth/logout', [AuthController::class, 'logout']);
+    $router->addRoute(['GET'], '/auth/me', [AuthController::class, 'me']);
+    $router->addRoute(['POST'], '/auth/password/reset', [AuthController::class, 'requestReset']);
+    $router->addRoute(['POST'], '/auth/password/complete', [AuthController::class, 'resetPassword']);
+    $router->addRoute(['POST'], '/auth/invitations', [AuthController::class, 'invite']);
+    $router->addRoute(['POST'], '/auth/invitations/accept', [AuthController::class, 'acceptInvitation']);
 
     $router->addRoute(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], '/{path:.*}', [Kernel::class, 'dispatch']);
 });
