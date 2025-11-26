@@ -13,5 +13,10 @@
         "classmap": [
             "includes"
         ]
+    },
+    "scripts": {
+        "migrate": "php bin/migrate up",
+        "migrate:status": "php bin/migrate status",
+        "cache:warmup": "composer dump-autoload -o"
     }
 }
