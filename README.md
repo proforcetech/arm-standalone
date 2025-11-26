@@ -28,3 +28,14 @@ RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^ index.php [QSA,L]
 ```
+
+## Database migrations and seeders
+
+The WordPress activation logic has been replaced with a migration runner so the database can be provisioned from the command line.
+
+1. Copy `.env.example` to `.env` (or create `.env`) and provide `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, and `DB_PREFIX` values. Character set and collation can be overridden with `DB_CHARSET` and `DB_COLLATE`.
+2. Install PHP dependencies: `composer install`.
+3. Apply migrations and seed defaults (Ubuntu/LiteSpeed): `php bin/migrate up` from the project root. The script is idempotent and will skip already-applied versions.
+4. Check pending work without applying it: `php bin/migrate status`.
+
+Seeders replace the plugin’s activation hooks by inserting default service types and option defaults for terms, notification email, labor/tax rates, and callout settings.
