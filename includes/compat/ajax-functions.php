@@ -68,7 +68,8 @@ if (!function_exists('check_ajax_referer')) {
         do_action('check_ajax_referer', $action, $result);
 
         if ($stop && !$result) {
-            die('Security check failed', 403);
+            http_response_code(403);
+            die('Security check failed');
         }
 
         return $result;
