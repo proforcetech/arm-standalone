@@ -63,7 +63,11 @@ final class SeederRunner
             $stmt->execute(['seeder' => $seeder->getId()]);
             $this->pdo->commit();
         } catch (\Throwable $exception) {
-            $this->pdo->rollBack();
+            // Check if transaction is still active before attempting rollback
+            // Some DDL statements (like CREATE TABLE) auto-commit in MySQL
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw new RuntimeException('Seeder failed: ' . $exception->getMessage(), 0, $exception);
         }
     }

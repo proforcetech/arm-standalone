@@ -64,7 +64,11 @@ final class MigrationRunner
             $stmt->execute(['migration' => $migration->getId()]);
             $this->pdo->commit();
         } catch (\Throwable $exception) {
-            $this->pdo->rollBack();
+            // Check if transaction is still active before attempting rollback
+            // Some DDL statements (like CREATE TABLE) auto-commit in MySQL
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             throw new RuntimeException('Migration failed: ' . $exception->getMessage(), 0, $exception);
         }
     }

@@ -73,6 +73,13 @@ final class Activator {
 
     public static function maybe_upgrade(): void
     {
+        // Prevent running multiple times in the same request
+        static $checked = false;
+        if ($checked) {
+            return;
+        }
+        $checked = true;
+
         if (!function_exists('get_option')) {
             return;
         }
@@ -81,13 +88,25 @@ final class Activator {
             define('ARM_RE_PATH', plugin_dir_path(dirname(__FILE__, 2)));
         }
 
-        $installed_version = get_option('arm_re_version');
-        if ($installed_version && defined('ARM_RE_VERSION') && version_compare($installed_version, ARM_RE_VERSION, '>=')) {
+        try {
+            $installed_version = get_option('arm_re_version');
+            if ($installed_version && defined('ARM_RE_VERSION') && version_compare($installed_version, ARM_RE_VERSION, '>=')) {
+                return;
+            }
+        } catch (\Throwable $e) {
+            // Database not available or error reading version - skip upgrade check
+            error_log('ARM upgrade check failed: ' . $e->getMessage());
             return;
         }
 
-        self::require_modules();
-        self::runMigrationsAndSeeds();
+        try {
+            self::require_modules();
+            self::runMigrationsAndSeeds();
+        } catch (\Throwable $e) {
+            // Log migration errors but don't crash the application
+            error_log('ARM migration failed: ' . $e->getMessage());
+            throw $e; // Re-throw so it's visible during initial setup
+        }
 
         if (class_exists('\\ARM\\Appointments\\Installer')) {
             \ARM\Appointments\Installer::maybe_upgrade_legacy_schema();
