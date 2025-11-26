@@ -1,38 +1,39 @@
 <?php
+declare(strict_types=1);
 
-if (!defined('ABSPATH')) exit;
+$rootPath = dirname(__DIR__);
+$publicPath = $rootPath . '/public';
 
-spl_autoload_register(function ($class) {
-    if (strpos($class, 'ARM\\') !== 0) return;
+if (!defined('ARM_RE_ROOT')) {
+    define('ARM_RE_ROOT', $rootPath);
+}
 
-    $relative = substr($class, 4);
-    $parts    = explode('\\', $relative);
-    $className = array_pop($parts);
+if (!defined('ARM_RE_PATH')) {
+    define('ARM_RE_PATH', rtrim($rootPath, '/\\') . '/');
+}
 
-    $dir = implode('/', array_map('strtolower', $parts));
+if (!defined('ARM_RE_PUBLIC_PATH')) {
+    define('ARM_RE_PUBLIC_PATH', rtrim($publicPath, '/\\') . '/');
+}
 
-    $slug = strtolower(
-        preg_replace(['~/~', '/__+/', '/([a-z])([A-Z])/'], ['-', '_', '$1-$2'], $className)
-    );
-    $candidate = 'class-' . $slug . '.php';
+if (!defined('ARM_RE_VERSION')) {
+    $version = $_ENV['ARM_RE_VERSION'] ?? '1.2.0';
+    define('ARM_RE_VERSION', $version);
+}
 
-    $tries = [];
+if (!defined('ABSPATH')) {
+    define('ABSPATH', ARM_RE_PATH);
+}
 
-    if ($dir !== '') {
-        $tries[] = ARM_RE_PATH . 'includes/' . $dir . '/' . $candidate;
-        $tries[] = ARM_RE_PATH . 'includes/' . $dir . '/' . $className . '.php';
-    }
+$baseUrl = $_ENV['APP_URL'] ?? '';
 
-    if ($dir !== '' && $dir !== strtolower($dir)) {
-        $tries[] = ARM_RE_PATH . 'includes/' . strtolower($dir) . '/' . $candidate;
-    }
+if ($baseUrl === '' && isset($_SERVER['HTTP_HOST'])) {
+    $scheme = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ($_SERVER['REQUEST_SCHEME'] ?? 'http');
+    $baseUrl = $scheme . '://' . $_SERVER['HTTP_HOST'];
+}
 
-    $tries[] = ARM_RE_PATH . 'includes/' . $candidate;
+$baseUrl = rtrim($baseUrl, '/');
 
-    foreach ($tries as $file) {
-        if (file_exists($file)) {
-            require_once $file;
-            return;
-        }
-    }
-});
+if (!defined('ARM_RE_URL')) {
+    define('ARM_RE_URL', $baseUrl !== '' ? $baseUrl . '/' : '/');
+}
