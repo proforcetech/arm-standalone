@@ -5,6 +5,20 @@ if (!defined('ABSPATH')) exit;
 
 require_once __DIR__ . '/DashboardMetrics.php';
 
+use function add_action;
+use function add_submenu_page;
+use function admin_url;
+use function __;
+use function current_user_can;
+use function esc_html;
+use function esc_html__;
+use function esc_html_e;
+use function esc_js;
+use function esc_url;
+use function number_format_i18n;
+use function wp_enqueue_script;
+use function wp_json_encode;
+
 final class Dashboard
 {
     public static function boot(): void
