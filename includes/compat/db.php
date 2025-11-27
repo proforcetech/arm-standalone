@@ -15,6 +15,7 @@ if (!class_exists('db')) {
         private static ?db $instance = null;
         private PDO $pdo;
         public string $prefix;
+        private string $charsetCollate;
         public ?int $insert_id = null;
         public ?int $rows_affected = null;
         public ?string $last_error = null;
@@ -26,6 +27,7 @@ if (!class_exists('db')) {
         {
             $this->pdo = ConnectionFactory::make($config);
             $this->prefix = $config->getPrefix();
+            $this->charsetCollate = $config->charsetCollate();
         }
 
         public static function getInstance(): self
@@ -368,6 +370,11 @@ if (!class_exists('db')) {
         public function esc_like(string $text): string
         {
             return addcslashes($text, '_%\\');
+        }
+
+        public function get_charset_collate(): string
+        {
+            return $this->charsetCollate;
         }
     }
 }
