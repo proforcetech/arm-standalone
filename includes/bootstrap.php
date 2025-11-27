@@ -47,6 +47,7 @@ require_once __DIR__ . '/compat/options-api.php';
 require_once __DIR__ . '/compat/ajax-functions.php';
 require_once __DIR__ . '/compat/admin-functions.php';
 require_once __DIR__ . '/compat/db-init.php';
+require_once __DIR__ . '/compat/upgrade.php';
 
 // Start session if not already started (for authentication)
 if (session_status() === PHP_SESSION_NONE) {

@@ -7,7 +7,14 @@ if (!defined('ABSPATH')) exit;
 class SchemaFix {
     public static function run(): void {
         global $db;
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+        if (!function_exists('arm_require_upgrade_file')) {
+            require_once __DIR__ . '/../compat/upgrade.php';
+        }
+
+        if (!arm_require_upgrade_file()) {
+            return;
+        }
 
         $estimates_table = $db->prefix . 'arm_estimates';
         $jobs_table      = $db->prefix . 'arm_estimate_jobs';

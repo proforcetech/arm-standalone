@@ -29,7 +29,15 @@ class Controller {
      * DB install/upgrade
      * --------------------------------------------------------------*/
     public static function install_tables() {
-        global $db; require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        global $db;
+
+        if (!function_exists('arm_require_upgrade_file')) {
+            require_once __DIR__ . '/../compat/upgrade.php';
+        }
+
+        if (!arm_require_upgrade_file()) {
+            return;
+        }
         $charset = $db->get_charset_collate();
         $bT  = $db->prefix . 'arm_service_bundles';
         $biT = $db->prefix . 'arm_service_bundle_items';

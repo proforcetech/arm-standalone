@@ -18,7 +18,13 @@ final class Activator {
     public static function activate() {
         global $db;
 
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        if (!function_exists('arm_require_upgrade_file')) {
+            require_once __DIR__ . '/../compat/upgrade.php';
+        }
+
+        if (!arm_require_upgrade_file()) {
+            return;
+        }
 
         if (!defined('ARM_RE_PATH')) {
             define('ARM_RE_PATH', plugin_dir_path(dirname(__FILE__, 2)));

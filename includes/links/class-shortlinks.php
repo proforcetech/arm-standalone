@@ -24,7 +24,13 @@ final class Shortlinks {
     /** DB table */
     public static function install_tables(): void {
         global $db;
-        require_once ABSPATH.'wp-admin/includes/upgrade.php';
+        if (!function_exists('arm_require_upgrade_file')) {
+            require_once __DIR__ . '/../compat/upgrade.php';
+        }
+
+        if (!arm_require_upgrade_file()) {
+            return;
+        }
         $tbl = $db->prefix.'arm_shortlinks';
         $charset = $db->get_charset_collate();
         dbDelta("CREATE TABLE $tbl (

@@ -99,7 +99,13 @@ class Installer {
 			KEY reminder_type (reminder_type)
 		) $charset_collate;";
 
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+                if (!function_exists('arm_require_upgrade_file')) {
+                    require_once __DIR__ . '/../compat/upgrade.php';
+                }
+
+                if (!arm_require_upgrade_file()) {
+                    return;
+                }
 		dbDelta( $sql_accounts );
 		dbDelta( $sql_transactions );
 		dbDelta( $sql_payments );
