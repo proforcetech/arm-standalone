@@ -8,7 +8,14 @@ final class Installer
     public static function install_tables(): void
     {
         global $db;
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+
+        if (!function_exists('arm_require_upgrade_file')) {
+            require_once __DIR__ . '/../compat/upgrade.php';
+        }
+
+        if (!arm_require_upgrade_file()) {
+            return;
+        }
 
         $charset      = $db->get_charset_collate();
         $appointments = $db->prefix . 'arm_appointments';
