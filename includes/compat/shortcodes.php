@@ -80,6 +80,11 @@ if (!function_exists('shortcode_atts')) {
                 if (!array_key_exists($name, $out)) {
                     $out[$name] = $value;
                 }
+        $out  = $pairs;
+
+        foreach ($atts as $name => $value) {
+            if (array_key_exists($name, $pairs)) {
+                $out[$name] = $value;
             }
         }
 
@@ -172,6 +177,14 @@ if (!function_exists('do_shortcode_tag')) {
         }
 
         return $m[1] . call_user_func($callback, $attr, $m[5] ?? null, $tag) . $m[6];
+        preg_match_all('/(\w+)\s*=\s*("([^"]*)"|\'([^\']*)\'|([^\s"\']+))/', $text, $matches, PREG_SET_ORDER);
+
+        foreach ($matches as $match) {
+            $value = $match[3] !== '' ? $match[3] : ($match[4] !== '' ? $match[4] : $match[5]);
+            $atts[$match[1]] = stripcslashes($value);
+        }
+
+        return $atts;
     }
 }
 
@@ -196,5 +209,24 @@ if (!function_exists('apply_shortcodes')) {
     function apply_shortcodes($content): string
     {
         return do_shortcode($content);
+        $pattern = '/\[(\/)?(\w+)([^\]]*)\]/';
+
+        return (string) preg_replace_callback($pattern, static function (array $matches) use ($shortcode_tags) {
+            $isClosing = $matches[1] === '/';
+            $tag       = $matches[2];
+
+            if (!isset($shortcode_tags[$tag])) {
+                return $matches[0];
+            }
+
+            if ($isClosing) {
+                return '';
+            }
+
+            $atts     = shortcode_parse_atts($matches[3]);
+            $callback = $shortcode_tags[$tag];
+
+            return (string) call_user_func($callback, $atts, '', $tag);
+        }, $content);
     }
 }
