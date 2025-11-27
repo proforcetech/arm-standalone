@@ -585,9 +585,14 @@ Visit the health check endpoint to verify the application is running:
 curl https://arm.example.com/health
 ```
 
-Expected response:
+Expected response (JSON with `Content-Type: application/json` header):
 ```json
 {"status":"ok"}
+```
+
+You can also test with verbose output to see the headers:
+```bash
+curl -v https://arm.example.com/health
 ```
 
 ### 2. Create Admin User
