@@ -40,6 +40,7 @@ if (!defined('ARM_RE_URL')) {
 
 // Load WordPress compatibility layers (must be loaded before anything else)
 require_once __DIR__ . '/compat/hooks.php';
+require_once __DIR__ . '/compat/shortcodes.php';
 require_once __DIR__ . '/compat/db.php';
 require_once __DIR__ . '/compat/sanitization-functions.php';
 require_once __DIR__ . '/compat/i18n-functions.php';
