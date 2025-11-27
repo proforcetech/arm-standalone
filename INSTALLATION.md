@@ -642,6 +642,108 @@ Verify the following functionality:
 3. Ensure database user has proper permissions
 4. For remote databases, verify `DB_HOST` and firewall rules
 
+### /health Endpoint Returns 404
+
+If the base URL works but `/health` returns a 404 error, the web server is not routing all requests through `index.php`.
+
+**Diagnosis**:
+```bash
+# This should work (returns catch-all route):
+curl http://yourdomain.com/
+# Output: {"message":"ARM front controller initialized","path":""}
+
+# This returns 404:
+curl http://yourdomain.com/health
+# Output: Not Found (404)
+```
+
+**Solutions**:
+
+1. **Verify document root is set to `public/` directory**:
+   - Apache/LiteSpeed: Check your virtual host `DocumentRoot`
+   - Nginx: Check `root` directive in server block
+
+2. **Check `.htaccess` is being read (Apache/LiteSpeed)**:
+   ```bash
+   # Verify .htaccess exists in public/ directory
+   ls -la public/.htaccess
+
+   # Test if mod_rewrite is enabled
+   apache2ctl -M | grep rewrite
+   # Should show: rewrite_module (shared)
+
+   # Ensure AllowOverride is set correctly in virtual host:
+   # <Directory /path/to/public>
+   #     AllowOverride All
+   # </Directory>
+   ```
+
+3. **Test rewrite rules manually (Apache/LiteSpeed)**:
+   Add this to `public/.htaccess` temporarily for debugging:
+   ```apache
+   RewriteEngine On
+   RewriteBase /
+
+   # Log rewrite activity (requires write permissions)
+   RewriteLog "/tmp/rewrite.log"
+   RewriteLogLevel 3
+
+   RewriteCond %{REQUEST_FILENAME} !-f
+   RewriteCond %{REQUEST_FILENAME} !-d
+   RewriteRule ^ index.php [QSA,L]
+   ```
+
+4. **For Nginx, verify try_files directive**:
+   ```nginx
+   location / {
+       try_files $uri $uri/ /index.php?$query_string;
+   }
+   ```
+
+   Ensure this is **before** the `location ~ \.php$` block.
+
+5. **Check if a static file named `health` exists**:
+   ```bash
+   # If this exists, it will be served instead of routing to index.php
+   ls -la public/health
+
+   # Remove if found
+   rm public/health
+   ```
+
+6. **Test index.php directly**:
+   ```bash
+   # This should work even with broken rewrites
+   curl 'http://yourdomain.com/index.php?/health'
+   ```
+
+7. **Verify PHP is executing**:
+   Create `public/test.php`:
+   ```php
+   <?php
+   echo "REQUEST_URI: " . ($_SERVER['REQUEST_URI'] ?? 'not set') . PHP_EOL;
+   echo "SCRIPT_NAME: " . ($_SERVER['SCRIPT_NAME'] ?? 'not set') . PHP_EOL;
+   ```
+
+   Then test:
+   ```bash
+   curl http://yourdomain.com/test.php
+   ```
+
+   **Remove `test.php` after testing!**
+
+8. **Restart web server after configuration changes**:
+   ```bash
+   # Apache
+   sudo systemctl restart apache2
+
+   # Nginx
+   sudo systemctl restart nginx
+
+   # LiteSpeed
+   sudo systemctl restart lsws
+   ```
+
 ### 500 Internal Server Error
 
 **Solutions**:
