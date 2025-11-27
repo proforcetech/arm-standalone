@@ -224,7 +224,18 @@ Configure your web server to serve the application with the document root set to
 
 ### Apache / LiteSpeed
 
-The application includes a `public/.htaccess` file with basic rewrite rules. For LiteSpeed optimization, create or edit your virtual host configuration:
+The application includes a `public/.htaccess` file with basic rewrite rules.
+
+**IMPORTANT**: After creating or modifying the `.htaccess` file, you must restart the web server:
+```bash
+# LiteSpeed
+sudo systemctl restart lsws
+
+# Apache
+sudo systemctl restart apache2
+```
+
+For LiteSpeed optimization, create or edit your virtual host configuration:
 
 ```apache
 <VirtualHost *:80>
@@ -645,6 +656,13 @@ Verify the following functionality:
 ### /health Endpoint Returns 404
 
 If the base URL works but `/health` returns a 404 error, the web server is not routing all requests through `index.php`.
+
+**Common Cause**: Forgot to restart the web server after creating/modifying `.htaccess`. Always restart after configuration changes:
+```bash
+sudo systemctl restart lsws      # LiteSpeed
+sudo systemctl restart apache2   # Apache
+sudo systemctl restart nginx     # Nginx
+```
 
 **Diagnosis**:
 ```bash
